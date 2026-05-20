@@ -1,6 +1,7 @@
 import { AgentPool } from '../agent/AgentPool.ts';
 import { ChainTransferManager } from '../chain/ChainTransferManager.ts';
 import { GlobalMemory } from '../memory/GlobalMemory.ts';
+import { EventBus } from '../message-bus/EventBus.ts';
 import { MemoryQueue } from '../message-bus/MemoryQueue.ts';
 import { Guard } from '../meta/Guard.ts';
 import { Intervener } from '../meta/Intervener.ts';
@@ -31,6 +32,7 @@ export class CoreEngine {
   observer!: Observer;
   guard!: Guard;
   intervener!: Intervener;
+  eventBus!: EventBus;
 
   constructor(private config: EngineConfig) {}
 
@@ -38,8 +40,10 @@ export class CoreEngine {
     this.db = new LevelDBAdapter(this.config.dbPath);
     await this.db.open();
 
+    this.eventBus = new EventBus();
     this.queue = new MemoryQueue();
     this.pool = new AgentPool();
+    this.pool.setEventBus(this.eventBus);
     this.memory = new GlobalMemory(this.db);
     this.scheduler = new Scheduler();
     this.orchestrator = new Orchestrator(['reasoner', 'coder', 'reviewer']);
@@ -63,6 +67,7 @@ export class CoreEngine {
   async executeTask(description: string): Promise<TaskResult> {
     const taskId = `task_${Date.now()}`;
     await this.scheduler.submit({ id: taskId, description, priority: 1 });
+    this.eventBus.publish('task.submitted', { taskId, description });
 
     const analysis = await this.orchestrator.analyze({
       id: taskId,
@@ -87,10 +92,21 @@ export class CoreEngine {
     );
     taskContext.neededCapabilities = caps;
 
-    const chain = new ChainTransferManager(this.pool, this.observer, this.intervener, 10);
+    const chain = new ChainTransferManager(
+      this.pool,
+      this.observer,
+      this.intervener,
+      10,
+      this.eventBus,
+    );
     const result = await chain.startChain(taskContext, analysis.firstAgent);
 
     this.scheduler.updateStatus(taskId, result.status === 'complete' ? 'completed' : 'failed');
+    this.eventBus.publish('task.completed', {
+      taskId,
+      status: result.status,
+      hops: result.hopCount,
+    });
     return { taskId, status: result.status, hops: result.hopCount };
   }
 

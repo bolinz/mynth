@@ -1,11 +1,17 @@
 import type { AgentId, Capability, CapabilityType } from '@mynth/sdk';
+import type { EventBus } from '../message-bus/EventBus.ts';
 import { BaseAgent } from './BaseAgent.ts';
 
 export class AgentPool {
   private agents = new Map<AgentId, BaseAgent>();
+  private eventBus?: EventBus;
+
+  setEventBus(bus: EventBus): void {
+    this.eventBus = bus;
+  }
 
   createAgent(id: string, name: string, capabilities: Capability[]): BaseAgent {
-    const agent = new BaseAgent(id, name, capabilities);
+    const agent = new BaseAgent(id, name, capabilities, this.eventBus);
     this.agents.set(agent.id, agent);
     return agent;
   }

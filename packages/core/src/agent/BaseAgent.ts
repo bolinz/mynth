@@ -1,4 +1,5 @@
 import type { AgentId, AgentMetadata, Capability, TransferDecision } from '@mynth/sdk';
+import type { EventBus } from '../message-bus/EventBus.ts';
 import { type AgentState, AgentStateMachine } from './AgentState.ts';
 
 export class BaseAgent {
@@ -11,8 +12,14 @@ export class BaseAgent {
   onStateChange?: (state: AgentState) => void;
 
   private _taskCount = 0;
+  private _lastState: AgentState = 'idle';
 
-  constructor(id: string, name: string, capabilities: Capability[]) {
+  constructor(
+    id: string,
+    name: string,
+    capabilities: Capability[],
+    private eventBus?: EventBus,
+  ) {
     this.id = id;
     this.name = name;
     this.capabilities = capabilities;
@@ -135,6 +142,15 @@ export class BaseAgent {
   }
 
   private stateChanged(): void {
-    this.onStateChange?.(this.state);
+    const newState = this.state;
+    this.onStateChange?.(newState);
+    if (this.eventBus && this._lastState !== newState) {
+      this.eventBus.publish('agent.state_changed', {
+        agentId: this.id,
+        fromState: this._lastState,
+        toState: newState,
+      });
+      this._lastState = newState;
+    }
   }
 }
