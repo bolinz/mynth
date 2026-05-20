@@ -25,4 +25,53 @@ describe('Orchestrator', () => {
     expect(chain.taskId).toBe('t1');
     expect(chain.currentAgent).toBe('reasoner');
   });
+
+  it('should infer codegen capability for code tasks', async () => {
+    const orc = new Orchestrator(['reasoner', 'coder', 'reviewer']);
+    const result = await orc.analyze({
+      id: 't1',
+      description: 'implement a login form',
+      priority: 1,
+    } as Task);
+    expect(result.capabilities).toContain('codegen');
+    expect(result.capabilities).toContain('reasoning');
+  });
+
+  it('should infer review capability for review tasks', async () => {
+    const orc = new Orchestrator(['reasoner', 'reviewer']);
+    const result = await orc.analyze({
+      id: 't1',
+      description: 'review the pull request',
+      priority: 1,
+    } as Task);
+    expect(result.capabilities).toContain('review');
+  });
+
+  it('should infer plan capability for design tasks', async () => {
+    const orc = new Orchestrator(['reasoner']);
+    const result = await orc.analyze({
+      id: 't1',
+      description: 'design the system architecture',
+      priority: 1,
+    } as Task);
+    expect(result.capabilities).toContain('plan');
+  });
+
+  it('should default to reasoning for unknown tasks', async () => {
+    const orc = new Orchestrator(['reasoner']);
+    const result = await orc.analyze({ id: 't1', description: 'hello world', priority: 1 } as Task);
+    expect(result.capabilities).toEqual(['reasoning']);
+  });
+
+  it('should infer multiple capabilities', async () => {
+    const orc = new Orchestrator(['reasoner', 'coder', 'reviewer']);
+    const result = await orc.analyze({
+      id: 't1',
+      description: 'implement a login form and review the code',
+      priority: 1,
+    } as Task);
+    expect(result.capabilities).toContain('codegen');
+    expect(result.capabilities).toContain('review');
+    expect(result.capabilities.length).toBeGreaterThanOrEqual(2);
+  });
 });
