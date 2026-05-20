@@ -1,5 +1,6 @@
 import type { AgentId, Capability, CapabilityType, HopRecord, TaskContext } from '@mynth/sdk';
 import type { AgentPool } from '../agent/AgentPool.ts';
+import type { InterventionAction } from '../meta/Intervener.ts';
 import type { Intervener } from '../meta/Intervener.ts';
 import type { Observer } from '../meta/Observer.ts';
 
@@ -9,6 +10,7 @@ export interface TransferResult {
   hopCount: number;
   hopHistory: HopRecord[];
   finalAgent?: AgentId;
+  interventions: InterventionAction[];
 }
 
 export class ChainTransferManager {
@@ -16,6 +18,7 @@ export class ChainTransferManager {
   private _taskContext?: TaskContext;
   private _currentAgentId?: AgentId;
   private satisfiedTypes = new Set<CapabilityType>();
+  private interventions: InterventionAction[] = [];
 
   constructor(
     private pool: AgentPool,
@@ -29,6 +32,7 @@ export class ChainTransferManager {
     this._currentAgentId = firstAgentId;
     this.hopHistory = [];
     this.satisfiedTypes = new Set();
+    this.interventions = [];
 
     const firstAgent = this.pool.getAgent(firstAgentId);
     if (!firstAgent) {
@@ -45,6 +49,13 @@ export class ChainTransferManager {
 
   private async runChain(): Promise<TransferResult> {
     while (this.hopHistory.length < this.maxHops) {
+      // Check for anomalies before each hop (allows pre-seeded or cross-hop detection)
+      const preAction = await this.checkIntervention();
+      if (preAction) {
+        const handled = await this.handleIntervention(preAction);
+        if (!handled) return this.terminate(preAction.reason ?? 'intervention_failed');
+      }
+
       const agent = this._currentAgentId ? this.pool.getAgent(this._currentAgentId) : undefined;
       if (!agent) {
         return this.escalate('agent_not_found');
@@ -58,7 +69,6 @@ export class ChainTransferManager {
       const decision = agent.decideTransfer(remaining, this.pool);
       const duration = Date.now() - hopStart;
 
-      // Record the hop
       this.recordHop(
         agent.id,
         decision.action === 'complete' ? '' : (decision.nextAgent ?? ''),
@@ -89,23 +99,71 @@ export class ChainTransferManager {
       } else {
         return this.escalate(decision.reason);
       }
-
-      if (this.intervener && this.observer) {
-        const anomalies = this.observer.detectAnomalies();
-        const anomaly = anomalies.pop();
-        if (anomaly) {
-          const action = this.intervener.decide({
-            type: anomaly.type,
-            agentId: anomaly.agentId,
-          } as any);
-          if (action.type === 'terminate') {
-            return this.terminate(action.reason);
-          }
-        }
-      }
     }
 
     return this.escalate('max_hops_exceeded');
+  }
+
+  private async checkIntervention(): Promise<InterventionAction | null> {
+    if (!this.intervener || !this.observer) return null;
+    const anomalies = this.observer.detectAnomalies();
+    if (anomalies.length === 0) return null;
+
+    const anomaly = anomalies[anomalies.length - 1];
+    const action = this.intervener.decide({
+      type: anomaly.type,
+      agentId: anomaly.agentId,
+    });
+    this.interventions.push(action);
+    return action;
+  }
+
+  private async handleIntervention(action: InterventionAction): Promise<boolean> {
+    switch (action.type) {
+      case 'warn':
+        return true;
+
+      case 'pause':
+        await new Promise((r) => setTimeout(r, 50));
+        return true;
+
+      case 'replace': {
+        if (!this._currentAgentId) return false;
+        const idleAgents = this.pool
+          .getAllAgents()
+          .filter((a) => a.id !== this._currentAgentId && a.state === 'idle');
+        if (idleAgents.length === 0) return false;
+        this._currentAgentId = idleAgents[0].id;
+        idleAgents[0].assignTask(this._taskContext!);
+        return true;
+      }
+
+      case 'reroute': {
+        const idleAgents = this.pool.getAllAgents().filter((a) => a.state === 'idle');
+        if (idleAgents.length === 0) return false;
+        this._currentAgentId = idleAgents[0].id;
+        this.satisfiedTypes = new Set();
+        idleAgents[0].assignTask(this._taskContext!);
+        return true;
+      }
+
+      case 'rollback': {
+        if (this.hopHistory.length < 2) return false;
+        const prevHop = this.hopHistory[this.hopHistory.length - 2];
+        this._currentAgentId = prevHop.fromAgent;
+        const prevAgent = this.pool.getAgent(prevHop.fromAgent);
+        if (prevAgent) {
+          prevAgent.assignTask(this._taskContext!);
+        }
+        return true;
+      }
+
+      case 'terminate':
+        return false;
+
+      default:
+        return true;
+    }
   }
 
   private computeRemaining(): Capability[] {
@@ -135,6 +193,7 @@ export class ChainTransferManager {
       hopCount: this.hopHistory.length,
       hopHistory: [...this.hopHistory],
       finalAgent: agentId,
+      interventions: this.interventions,
     };
   }
 
@@ -144,6 +203,7 @@ export class ChainTransferManager {
       status: 'escalated',
       hopCount: this.hopHistory.length,
       hopHistory: [...this.hopHistory],
+      interventions: this.interventions,
     };
   }
 
@@ -153,6 +213,7 @@ export class ChainTransferManager {
       status: 'terminated',
       hopCount: this.hopHistory.length,
       hopHistory: [...this.hopHistory],
+      interventions: this.interventions,
     };
   }
 }

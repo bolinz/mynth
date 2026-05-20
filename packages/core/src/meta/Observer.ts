@@ -7,6 +7,7 @@ export interface Anomaly {
 export class Observer {
   private running = false;
   private hopHistory: Array<{ from: string; to: string; duration: number }> = [];
+  private errorCounts = new Map<string, number>();
   private anomalyHandlers: Array<(anomaly: Anomaly) => void> = [];
 
   start(_config: { interval: number }): void {
@@ -29,16 +30,43 @@ export class Observer {
     this.hopHistory.push({ from, to, duration });
   }
 
+  recordError(agentId: string): void {
+    this.errorCounts.set(agentId, (this.errorCounts.get(agentId) ?? 0) + 1);
+  }
+
+  hopCount(): number {
+    return this.hopHistory.length;
+  }
+
   detectAnomalies(): Anomaly[] {
     const anomalies: Anomaly[] = [];
 
     if (this.detectCycle()) {
-      anomalies.push({ type: 'cycle_pattern', details: { hops: this.hopHistory.length } });
+      anomalies.push({
+        type: 'cycle_pattern',
+        details: {
+          hops: this.hopHistory.length,
+          agents: this.hopHistory.slice(-4).map((h) => h.from),
+        },
+      });
     }
 
     const avgDuration = this.averageDuration();
-    if (avgDuration > 10000) {
-      anomalies.push({ type: 'duration_exceeded', details: { avgDuration } });
+    if (avgDuration > 500 && this.hopHistory.length >= 3) {
+      anomalies.push({
+        type: 'duration_exceeded',
+        details: { avgDuration, threshold: 500 },
+      });
+    }
+
+    for (const [agentId, count] of this.errorCounts) {
+      if (count >= 3) {
+        anomalies.push({
+          type: 'agent_error',
+          agentId,
+          details: { errorCount: count },
+        });
+      }
     }
 
     return anomalies;
