@@ -9,6 +9,7 @@ import { Observer } from '../meta/Observer.ts';
 import { Orchestrator } from '../meta/Orchestrator.ts';
 import { LevelDBAdapter } from '../persistence/LevelDBAdapter.ts';
 import type { Persistence } from '../persistence/Persistence.ts';
+import { StateStore } from '../persistence/StateStore.ts';
 import { Scheduler } from '../scheduler/Scheduler.ts';
 
 export interface EngineConfig {
@@ -33,6 +34,8 @@ export class CoreEngine {
   guard!: Guard;
   intervener!: Intervener;
   eventBus!: EventBus;
+  stateStore!: StateStore;
+  private _lastTaskId?: string;
 
   constructor(private config: EngineConfig) {}
 
@@ -40,6 +43,7 @@ export class CoreEngine {
     this.db = new LevelDBAdapter(this.config.dbPath);
     await this.db.open();
 
+    this.stateStore = new StateStore(this.db);
     this.eventBus = new EventBus();
     this.queue = new MemoryQueue();
     this.pool = new AgentPool();
@@ -52,6 +56,21 @@ export class CoreEngine {
     this.intervener = new Intervener();
 
     this.registerDefaultAgents();
+
+    // Persist hops via event bus
+    this.eventBus.subscribe('hop.recorded', (_t, p) => {
+      const e = p as any;
+      if (this._lastTaskId) {
+        this.stateStore.saveHop(this._lastTaskId, {
+          fromAgent: e.from,
+          toAgent: e.to || '',
+          timestamp: Date.now(),
+          handoverNote: e.note,
+          duration: e.duration,
+        });
+      }
+    });
+
     this.running = true;
   }
 
@@ -66,8 +85,16 @@ export class CoreEngine {
 
   async executeTask(description: string): Promise<TaskResult> {
     const taskId = `task_${Date.now()}`;
+    this._lastTaskId = taskId;
     await this.scheduler.submit({ id: taskId, description, priority: 1 });
     this.eventBus.publish('task.submitted', { taskId, description });
+    await this.stateStore.saveTask({
+      taskId,
+      description,
+      status: 'running',
+      hops: 0,
+      createdAt: Date.now(),
+    });
 
     const analysis = await this.orchestrator.analyze({
       id: taskId,
@@ -102,11 +129,19 @@ export class CoreEngine {
     const result = await chain.startChain(taskContext, analysis.firstAgent);
 
     this.scheduler.updateStatus(taskId, result.status === 'complete' ? 'completed' : 'failed');
+    await this.stateStore.saveTask({
+      taskId,
+      description,
+      status: result.status,
+      hops: result.hopCount,
+      createdAt: Date.now(),
+    });
     this.eventBus.publish('task.completed', {
       taskId,
       status: result.status,
       hops: result.hopCount,
     });
+    this._lastTaskId = undefined;
     return { taskId, status: result.status, hops: result.hopCount };
   }
 
@@ -119,11 +154,29 @@ export class CoreEngine {
   }
 
   private registerDefaultAgents(): void {
-    this.pool.createAgent('reasoner', 'Reasoner', [
-      { type: 'reasoning', level: 8, confidence: 0.9 },
-      { type: 'coordination', level: 5, confidence: 0.7 },
-    ]);
-    this.pool.createAgent('coder', 'Coder', [{ type: 'codegen', level: 8, confidence: 0.85 }]);
-    this.pool.createAgent('reviewer', 'Reviewer', [{ type: 'review', level: 7, confidence: 0.8 }]);
+    const configs = [
+      {
+        id: 'reasoner',
+        name: 'Reasoner',
+        capabilities: [
+          { type: 'reasoning' as const, level: 8, confidence: 0.9 },
+          { type: 'coordination' as const, level: 5, confidence: 0.7 },
+        ],
+      },
+      {
+        id: 'coder',
+        name: 'Coder',
+        capabilities: [{ type: 'codegen' as const, level: 8, confidence: 0.85 }],
+      },
+      {
+        id: 'reviewer',
+        name: 'Reviewer',
+        capabilities: [{ type: 'review' as const, level: 7, confidence: 0.8 }],
+      },
+    ];
+    for (const cfg of configs) {
+      this.pool.createAgent(cfg.id, cfg.name, cfg.capabilities);
+      this.stateStore.saveAgentConfig(cfg);
+    }
   }
 }

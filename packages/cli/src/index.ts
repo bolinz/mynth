@@ -4,6 +4,7 @@ import { join } from 'path';
 import { CoreEngine } from '@mynth/core';
 import { cac } from 'cac';
 import { version } from '../package.json' with { type: 'json' };
+import { historyCommand } from './commands/history.ts';
 import { listCommand } from './commands/list.ts';
 import { runCommand } from './commands/run.ts';
 import { statusCommand } from './commands/status.ts';
@@ -32,6 +33,12 @@ cli.command('status', 'Show system status').action(async () => {
 cli.command('list', 'List tasks').action(async () => {
   await engine.start();
   await listCommand(engine);
+  await engine.stop();
+});
+
+cli.command('history', 'Show task history and persisted state').action(async () => {
+  await engine.start();
+  await historyCommand(engine);
   await engine.stop();
 });
 
