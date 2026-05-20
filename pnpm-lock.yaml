@@ -32,6 +32,9 @@ importers:
       cac:
         specifier: ^6.7.14
         version: 6.7.14
+      neo-blessed:
+        specifier: ^0.2.0
+        version: 0.2.0
       tsx:
         specifier: ^4.19.0
         version: 4.22.3
@@ -783,6 +786,11 @@ packages:
   napi-macros@2.2.2:
     resolution: {integrity: sha512-hmEVtAGYzVQpCKdbQea4skABsdXW4RUh5t5mJ2zzqowJS2OyXZTU1KhDVFhx+NlWZ4ap9mqR9TcDO3LTTttd+g==}
 
+  neo-blessed@0.2.0:
+    resolution: {integrity: sha512-C2kC4K+G2QnNQFXUIxTQvqmrdSIzGTX1ZRKeDW6ChmvPRw8rTkTEJzbEQHiHy06d36PCl/yMOCjquCRV8SpSQw==}
+    engines: {node: '>= 8.0.0'}
+    hasBin: true
+
   node-gyp-build@4.8.4:
     resolution: {integrity: sha512-LA4ZjwlnUblHVgq0oBF3Jl/6h/Nvs5fzBLwdEF4nuxnFdsfajde4WfxtJr3CaiH+F6ewcIB/q4jQ4UzPyid+CQ==}
     hasBin: true
@@ -1442,6 +1450,8 @@ snapshots:
   nanoid@3.3.12: {}
 
   napi-macros@2.2.2: {}
+
+  neo-blessed@0.2.0: {}
 
   node-gyp-build@4.8.4: {}
 

@@ -8,6 +8,7 @@ import { historyCommand } from './commands/history.ts';
 import { listCommand } from './commands/list.ts';
 import { runCommand } from './commands/run.ts';
 import { statusCommand } from './commands/status.ts';
+import { startTui } from './tui/index.ts';
 
 const engine = new CoreEngine({
   dbPath: join(homedir(), '.mynth', 'data'),
@@ -33,6 +34,12 @@ cli.command('status', 'Show system status').action(async () => {
 cli.command('list', 'List tasks').action(async () => {
   await engine.start();
   await listCommand(engine);
+  await engine.stop();
+});
+
+cli.command('tui', 'Launch TUI interface').action(async () => {
+  await engine.start();
+  await startTui(engine);
   await engine.stop();
 });
 
