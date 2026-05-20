@@ -1,0 +1,18 @@
+{
+  "name": "@mynth/examples",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "simple": "tsx src/simple-agent.ts",
+    "collab": "tsx src/collaboration.ts"
+  },
+  "dependencies": {
+    "@mynth/core": "workspace:*",
+    "@mynth/sdk": "workspace:*",
+    "tsx": "^4.19.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

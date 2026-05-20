@@ -1,0 +1,3 @@
+[submodule "docs/agent-design"]
+	path = docs/agent-design
+	url = https://github.com/bolinz/agent-design.git
