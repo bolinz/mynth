@@ -2,15 +2,18 @@ import { Level } from 'level';
 import type { Operation, Persistence } from './Persistence.ts';
 
 export class LevelDBAdapter implements Persistence {
-  private db: Level<string, string>;
+  private db!: Level<string, string>;
 
-  constructor(dbPath: string) {
-    this.db = new Level(dbPath, { valueEncoding: 'json' });
+  constructor(private dbPath: string) {}
+
+  async open(): Promise<void> {
+    this.db = new Level(this.dbPath, { valueEncoding: 'json' });
   }
 
   async get(key: string): Promise<unknown> {
     try {
       const value = await this.db.get(key);
+      if (value === undefined) return null;
       return JSON.parse(value);
     } catch (err) {
       if (isNotFoundError(err)) return null;

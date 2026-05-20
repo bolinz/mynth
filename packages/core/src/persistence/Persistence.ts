@@ -1,4 +1,5 @@
 export interface Persistence {
+  open(): Promise<void>;
   get(key: string): Promise<unknown>;
   put(key: string, value: unknown): Promise<void>;
   delete(key: string): Promise<void>;

@@ -1,6 +1,10 @@
+import { mkdtempSync, rmSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { CheckpointManager } from '../../src/memory/Checkpoint.ts';
 import { GlobalMemory } from '../../src/memory/GlobalMemory.ts';
+import { LevelDBAdapter } from '../../src/persistence/LevelDBAdapter.ts';
 
 describe('GlobalMemory', () => {
   let mem: GlobalMemory;
@@ -68,5 +72,24 @@ describe('CheckpointManager', () => {
   it('should return null for unknown checkpoint', () => {
     const cm = new CheckpointManager(mem);
     expect(cm.restore('nope')).toBeNull();
+  });
+});
+
+describe('GlobalMemory with LevelDB', () => {
+  it('should persist and reload values', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'mynth-global-'));
+    const db = new LevelDBAdapter(dir);
+    await db.open();
+
+    const mem1 = new GlobalMemory(db);
+    await mem1.write('persist', 'yes');
+    await mem1.write('count', 42);
+
+    const mem2 = new GlobalMemory(db);
+    expect(await mem2.read('persist')).toBe('yes');
+    expect(await mem2.read('count')).toBe(42);
+
+    await db.close();
+    rmSync(dir, { recursive: true, force: true });
   });
 });
