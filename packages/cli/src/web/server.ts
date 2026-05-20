@@ -68,6 +68,20 @@ export function startWebServer(engine: CoreEngine, port = 3000): void {
       return;
     }
 
+    if (url.pathname === '/tasks') {
+      const tasks = engine
+        .getScheduler()
+        .getAllTasks()
+        .map((t) => ({
+          taskId: t.taskId,
+          description: t.description,
+          status: t.status,
+        }));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(tasks));
+      return;
+    }
+
     if (url.pathname === '/run' && req.method === 'POST') {
       let body = '';
       req.on('data', (chunk) => {
