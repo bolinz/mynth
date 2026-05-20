@@ -1,28 +1,24 @@
-import type { CoreEngine } from './engine/CoreEngine.ts';
+import type { CoreEngine, TaskResult } from './engine/CoreEngine.ts';
+import type { EventPayload, EventTopic } from './message-bus/EventBus.ts';
 
-export interface TaskResult {
-  taskId: string;
-  status: string;
-  hops: number;
-}
+export type { TaskResult };
+export type { EventTopic, EventPayload };
 
 export interface MynthClient {
   run(task: string): Promise<TaskResult>;
   status(): Promise<Array<{ id: string; name: string; state: string; capabilities: string[] }>>;
   tasks(): Promise<Array<{ taskId: string; description: string; status: string }>>;
-  subscribe(event: string, handler: (...args: unknown[]) => void): () => void;
+  subscribe(
+    topic: EventTopic,
+    handler: (topic: EventTopic, payload: EventPayload) => void,
+  ): () => void;
 }
 
 export class InProcessClient implements MynthClient {
   constructor(private engine: CoreEngine) {}
 
   async run(task: string): Promise<TaskResult> {
-    const result = await this.engine.executeTask(task);
-    return {
-      taskId: result.taskId,
-      status: result.status,
-      hops: result.hops,
-    };
+    return this.engine.executeTask(task);
   }
 
   async status(): Promise<
@@ -50,7 +46,10 @@ export class InProcessClient implements MynthClient {
       }));
   }
 
-  subscribe(event: string, handler: (...args: unknown[]) => void): () => void {
-    return this.engine.eventBus.subscribe(event as any, handler as any);
+  subscribe(
+    topic: EventTopic,
+    handler: (topic: EventTopic, payload: EventPayload) => void,
+  ): () => void {
+    return this.engine.eventBus.subscribe(topic, handler);
   }
 }

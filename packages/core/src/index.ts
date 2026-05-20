@@ -9,5 +9,5 @@ export * from './meta/index.ts';
 export * from './chain/index.ts';
 export * from './engine/index.ts';
 export { InProcessClient } from './client.ts';
-export type { MynthClient, TaskResult as ClientTaskResult } from './client.ts';
+export type { MynthClient } from './client.ts';
 export type { StoredTask, StoredAgentConfig } from './persistence/StateStore.ts';

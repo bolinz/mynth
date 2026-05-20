@@ -25,7 +25,6 @@ export interface TaskResult {
 export class CoreEngine {
   private running = false;
   private db!: Persistence;
-  private queue!: MemoryQueue;
   private pool!: AgentPool;
   private scheduler!: Scheduler;
   private memory!: GlobalMemory;
@@ -35,7 +34,6 @@ export class CoreEngine {
   intervener!: Intervener;
   eventBus!: EventBus;
   stateStore!: StateStore;
-  private _lastTaskId?: string;
 
   constructor(private config: EngineConfig) {}
 
@@ -45,7 +43,6 @@ export class CoreEngine {
 
     this.stateStore = new StateStore(this.db);
     this.eventBus = new EventBus();
-    this.queue = new MemoryQueue();
     this.pool = new AgentPool();
     this.pool.setEventBus(this.eventBus);
     this.memory = new GlobalMemory(this.db);
@@ -56,21 +53,6 @@ export class CoreEngine {
     this.intervener = new Intervener();
 
     this.registerDefaultAgents();
-
-    // Persist hops via event bus
-    this.eventBus.subscribe('hop.recorded', (_t, p) => {
-      const e = p as any;
-      if (this._lastTaskId) {
-        this.stateStore.saveHop(this._lastTaskId, {
-          fromAgent: e.from,
-          toAgent: e.to || '',
-          timestamp: Date.now(),
-          handoverNote: e.note,
-          duration: e.duration,
-        });
-      }
-    });
-
     this.running = true;
   }
 
@@ -85,7 +67,6 @@ export class CoreEngine {
 
   async executeTask(description: string): Promise<TaskResult> {
     const taskId = `task_${Date.now()}`;
-    this._lastTaskId = taskId;
     await this.scheduler.submit({ id: taskId, description, priority: 1 });
     this.eventBus.publish('task.submitted', { taskId, description });
     await this.stateStore.saveTask({
@@ -96,18 +77,7 @@ export class CoreEngine {
       createdAt: Date.now(),
     });
 
-    const analysis = await this.orchestrator.analyze({
-      id: taskId,
-      description,
-      priority: 1,
-    });
-
-    const caps = analysis.capabilities.map((name) => ({
-      type: name as any,
-      level: 5,
-      confidence: 0.5,
-    }));
-
+    const analysis = await this.orchestrator.analyze({ id: taskId, description, priority: 1 });
     const taskContext = await this.orchestrator.initializeChain(
       {
         id: taskId,
@@ -117,7 +87,11 @@ export class CoreEngine {
       },
       analysis.firstAgent,
     );
-    taskContext.neededCapabilities = caps;
+    taskContext.neededCapabilities = analysis.capabilities.map((name) => ({
+      type: name as any,
+      level: 5,
+      confidence: 0.5,
+    }));
 
     const chain = new ChainTransferManager(
       this.pool,
@@ -127,6 +101,11 @@ export class CoreEngine {
       this.eventBus,
     );
     const result = await chain.startChain(taskContext, analysis.firstAgent);
+
+    // Persist hops
+    for (const hop of result.hopHistory) {
+      await this.stateStore.saveHop(taskId, hop);
+    }
 
     this.scheduler.updateStatus(taskId, result.status === 'complete' ? 'completed' : 'failed');
     await this.stateStore.saveTask({
@@ -141,7 +120,6 @@ export class CoreEngine {
       status: result.status,
       hops: result.hopCount,
     });
-    this._lastTaskId = undefined;
     return { taskId, status: result.status, hops: result.hopCount };
   }
 
