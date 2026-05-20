@@ -1,4 +1,5 @@
 import { AgentPool } from '../agent/AgentPool.ts';
+import { ChainTransferManager } from '../chain/ChainTransferManager.ts';
 import { GlobalMemory } from '../memory/GlobalMemory.ts';
 import { MemoryQueue } from '../message-bus/MemoryQueue.ts';
 import { Guard } from '../meta/Guard.ts';
@@ -68,24 +69,29 @@ export class CoreEngine {
       description,
       priority: 1,
     });
+
+    const caps = analysis.capabilities.map((name) => ({
+      type: name as any,
+      level: 5,
+      confidence: 0.5,
+    }));
+
     const taskContext = await this.orchestrator.initializeChain(
-      { id: taskId, description, priority: 1 },
+      {
+        id: taskId,
+        description,
+        priority: 1,
+        constraints: { requiredCapabilities: [], forbiddenAgents: [], maxHops: 10 },
+      },
       analysis.firstAgent,
     );
+    taskContext.neededCapabilities = caps;
 
-    const chain = ['reasoning', 'codegen', 'review'] as const;
-    for (const cap of chain) {
-      const agent = this.pool.acquire(cap);
-      if (!agent) continue;
-      agent.assignTask(taskContext);
-      agent.startWork();
-      await new Promise((r) => setTimeout(r, 50));
-      agent.complete();
-      this.pool.release(agent);
-    }
+    const chain = new ChainTransferManager(this.pool, this.observer, this.intervener, 10);
+    const result = await chain.startChain(taskContext, analysis.firstAgent);
 
-    this.scheduler.updateStatus(taskId, 'completed');
-    return { taskId, status: 'completed', hops: chain.length };
+    this.scheduler.updateStatus(taskId, result.status === 'complete' ? 'completed' : 'failed');
+    return { taskId, status: result.status, hops: result.hopCount };
   }
 
   getScheduler(): Scheduler {

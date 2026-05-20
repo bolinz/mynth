@@ -20,7 +20,7 @@ describe('CoreEngine', () => {
     await engine.start();
     const result = await engine.executeTask('write a hello world function');
     expect(result.taskId).toBeDefined();
-    expect(result.status).toBe('completed');
+    expect(result.status).toBe('complete');
     expect(result.hops).toBeGreaterThan(0);
     await engine.stop();
     rmSync(dir, { recursive: true, force: true });

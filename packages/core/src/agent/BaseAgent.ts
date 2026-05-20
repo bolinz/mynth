@@ -1,4 +1,4 @@
-import type { AgentId, AgentMetadata, Capability } from '@mynth/sdk';
+import type { AgentId, AgentMetadata, Capability, TransferDecision } from '@mynth/sdk';
 import { type AgentState, AgentStateMachine } from './AgentState.ts';
 
 export class BaseAgent {
@@ -71,6 +71,59 @@ export class BaseAgent {
   shutdown(): void {
     this.stateMachine.transition('shutdown');
     this.stateChanged();
+  }
+
+  decideTransfer(
+    remaining: Capability[],
+    pool: { getAllAgents: () => BaseAgent[] },
+  ): TransferDecision {
+    if (remaining.length === 0 || this.canHandle(remaining)) {
+      return {
+        action: 'complete',
+        reason: 'all_capabilities_fulfilled',
+        checkpoint: {
+          agentId: this.id,
+          timestamp: Date.now(),
+          state: 'idle',
+          partialResult: null,
+          context: {} as any,
+        },
+      };
+    }
+
+    const nextAgent = pool
+      .getAllAgents()
+      .filter((a) => a.id !== this.id && a.state === 'idle')
+      .find((a) =>
+        remaining.some((r) => a.capabilities.some((c) => c.type === r.type && c.level >= r.level)),
+      );
+
+    if (nextAgent) {
+      return {
+        nextAgent: nextAgent.id,
+        action: 'continue',
+        reason: `transfer_to_${nextAgent.id}`,
+        checkpoint: {
+          agentId: this.id,
+          timestamp: Date.now(),
+          state: 'idle',
+          partialResult: null,
+          context: {} as any,
+        },
+      };
+    }
+
+    return {
+      action: 'escalate',
+      reason: 'no_available_agent',
+      checkpoint: {
+        agentId: this.id,
+        timestamp: Date.now(),
+        state: 'idle',
+        partialResult: null,
+        context: {} as any,
+      },
+    };
   }
 
   canHandle(required: Capability[]): boolean {
