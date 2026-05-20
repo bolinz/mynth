@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mynth Web UI</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'SF Mono', 'Fira Code', monospace; background: #1a1a2e; color: #e0e0e0; padding: 20px; }
+h1 { color: #00d4aa; font-size: 20px; margin-bottom: 16px; }
+h2 { color: #888; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.panel { background: #16213e; border: 1px solid #0f3460; border-radius: 8px; padding: 16px; }
+.panel.full { grid-column: 1 / -1; }
+.agent { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #0f3460; }
+.agent:last-child { border-bottom: none; }
+.agent-name { color: #e0e0e0; }
+.agent-state { font-size: 12px; padding: 2px 8px; border-radius: 4px; }
+.state-idle { background: #1a3a3a; color: #4ecdc4; }
+.state-working { background: #3a2a1a; color: #ffd93d; }
+.state-error { background: #3a1a1a; color: #ff6b6b; }
+.state-transferring { background: #1a2a3a; color: #6bcbff; }
+.state-shutdown { background: #2a2a2a; color: #888; }
+.caps { color: #666; font-size: 11px; margin-left: 8px; }
+#chain { min-height: 40px; padding: 8px; }
+.hop { padding: 4px 0; }
+.hop .arrow { color: #00d4aa; }
+.hop .agent { color: #ffd93d; display: inline; border: none; }
+.hop .duration { color: #666; font-size: 11px; }
+#input-area { display: flex; gap: 8px; }
+#task-input { flex: 1; background: #0f3460; border: 1px solid #1a5276; color: #e0e0e0; padding: 10px 14px; border-radius: 6px; font-family: inherit; font-size: 14px; outline: none; }
+#task-input:focus { border-color: #00d4aa; }
+#run-btn { background: #00d4aa; color: #1a1a2e; border: none; padding: 10px 20px; border-radius: 6px; font-family: inherit; font-weight: bold; cursor: pointer; }
+#run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+#run-btn:hover:not(:disabled) { background: #00e6b3; }
+#log { max-height: 300px; overflow-y: auto; font-size: 12px; line-height: 1.6; }
+.log-entry { padding: 2px 0; border-bottom: 1px solid #0f3460; }
+.log-time { color: #555; margin-right: 8px; }
+.log-hop { color: #6bcbff; }
+.log-anomaly { color: #ff6b6b; }
+.log-intervention { color: #ffd93d; }
+.log-done { color: #4ecdc4; }
+#status-bar { text-align: center; color: #555; font-size: 11px; margin-top: 16px; }
+.connecting { color: #ffd93d; }
+.connected { color: #4ecdc4; }
+.disconnected { color: #ff6b6b; }
+</style>
+</head>
+<body>
+<h1>╲ Mynth Web UI</h1>
+<div class="grid">
+  <div class="panel" id="agent-panel">
+    <h2>Agent Pool</h2>
+    <div id="agent-list"></div>
+  </div>
+  <div class="panel" id="chain-panel">
+    <h2>Chain</h2>
+    <div id="chain">Waiting for task...</div>
+  </div>
+</div>
+<div class="panel full" id="log-panel">
+  <h2>Event Log</h2>
+  <div id="log"></div>
+</div>
+<div class="panel full" id="input-area">
+  <input type="text" id="task-input" placeholder="Type a task and press Enter..." autofocus>
+  <button id="run-btn" onclick="runTask()">Run</button>
+</div>
+<div id="status-bar" class="connecting">Connecting...</div>
+
+<script>
+const evtSource = new EventSource('/events');
+const logEl = document.getElementById('log');
+const chainEl = document.getElementById('chain');
+const agentListEl = document.getElementById('agent-list');
+const taskInput = document.getElementById('task-input');
+const runBtn = document.getElementById('run-btn');
+const statusBar = document.getElementById('status-bar');
+
+evtSource.onopen = () => {
+  statusBar.textContent = 'Connected';
+  statusBar.className = 'connected';
+};
+
+evtSource.onerror = () => {
+  statusBar.textContent = 'Disconnected';
+  statusBar.className = 'disconnected';
+};
+
+function log(msg, cls = '') {
+  const time = new Date().toLocaleTimeString();
+  const el = document.createElement('div');
+  el.className = `log-entry ${cls}`;
+  el.innerHTML = `<span class="log-time">[${time}]</span>${msg}`;
+  logEl.appendChild(el);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+async function updateAgents() {
+  const res = await fetch('/status');
+  const agents = await res.json();
+  agentListEl.innerHTML = agents.map(a => {
+    const stateClass = `state-${a.state}`;
+    const caps = a.capabilities.join(', ');
+    return `<div class="agent"><span><span class="agent-name">${a.name}</span><span class="caps">[${caps}]</span></span><span class="agent-state ${stateClass}">${a.state}</span></div>`;
+  }).join('');
+}
+
+async function runTask() {
+  const task = taskInput.value.trim();
+  if (!task) return;
+  taskInput.value = '';
+  runBtn.disabled = true;
+
+  chainEl.innerHTML = `<div class="hop">Running: ${task}...</div>`;
+  log(`Running: <b>${task}</b>`, 'log-hop');
+
+  try {
+    const res = await fetch('/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task }),
+    });
+    const result = await res.json();
+    chainEl.innerHTML = `<div class="hop">${task} — <span class="arrow">\u2713 ${result.status}</span> (${result.hops} hops)</div>`;
+    log(`<span class="arrow">\u2713 ${result.taskId}: ${result.status}</span>`, 'log-done');
+  } catch (err) {
+    log(`<span class="log-anomaly">\u2717 Error: ${err}</span>`);
+  }
+
+  runBtn.disabled = false;
+  taskInput.focus();
+}
+
+taskInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') runTask();
+});
+
+// SSE events
+evtSource.addEventListener('agent.state_changed', (e) => {
+  const { payload } = JSON.parse(e.data);
+  log(`${payload.fromState} \u2192 ${payload.toState} (${payload.agentId})`);
+  updateAgents();
+});
+
+evtSource.addEventListener('hop.recorded', (e) => {
+  const { payload } = JSON.parse(e.data);
+  if (payload.to) {
+    log(`<span class="log-hop">${payload.from} \u2192 ${payload.to}</span> (${payload.duration}ms)`);
+  }
+});
+
+evtSource.addEventListener('anomaly.detected', (e) => {
+  const { payload } = JSON.parse(e.data);
+  log(`<span class="log-anomaly">\u26a0 ${payload.type}${payload.agentId ? ' (' + payload.agentId + ')' : ''}</span>`);
+});
+
+evtSource.addEventListener('intervention.executed', (e) => {
+  const { payload } = JSON.parse(e.data);
+  log(`<span class="log-intervention">\u2139 ${payload.type}</span>`);
+});
+
+evtSource.addEventListener('task.completed', (e) => {
+  const { payload } = JSON.parse(e.data);
+  log(`<span class="log-done">\u2713 ${payload.taskId}: ${payload.status} (${payload.hops || '?'} hops)</span>`);
+});
+
+// Initial load
+updateAgents();
+</script>
+</body>
+</html>

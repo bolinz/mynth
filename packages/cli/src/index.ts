@@ -9,6 +9,7 @@ import { listCommand } from './commands/list.ts';
 import { runCommand } from './commands/run.ts';
 import { statusCommand } from './commands/status.ts';
 import { startTui } from './tui/index.ts';
+import { startWebServer } from './web/server.ts';
 
 const engine = new CoreEngine({
   dbPath: join(homedir(), '.mynth', 'data'),
@@ -41,6 +42,13 @@ cli.command('tui', 'Launch TUI interface').action(async () => {
   await engine.start();
   await startTui(engine);
   await engine.stop();
+});
+
+cli.command('ui', 'Launch Web UI (http://localhost:3000)').action(async () => {
+  await engine.start();
+  startWebServer(engine, 3000);
+  console.log('Web UI running at http://localhost:3000');
+  console.log('Press Ctrl+C to stop');
 });
 
 cli.command('history', 'Show task history and persisted state').action(async () => {
