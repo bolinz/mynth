@@ -1,6 +1,6 @@
 import type { AgentId, Capability, CapabilityType, HopRecord, TaskContext } from '@mynth/sdk';
 import type { AgentPool } from '../agent/AgentPool.ts';
-import type { EventBus } from '../message-bus/EventBus.ts';
+import type { MessageBus } from '../message-bus/MessageBus.ts';
 import type { InterventionAction } from '../meta/Intervener.ts';
 import type { Intervener } from '../meta/Intervener.ts';
 import type { Observer } from '../meta/Observer.ts';
@@ -26,7 +26,7 @@ export class ChainTransferManager {
     private observer?: Observer,
     private intervener?: Intervener,
     private maxHops = 10,
-    private eventBus?: EventBus,
+    private bus?: MessageBus,
   ) {}
 
   async startChain(taskContext: TaskContext, firstAgentId: AgentId): Promise<TransferResult> {
@@ -120,7 +120,7 @@ export class ChainTransferManager {
     });
     this.interventions.push(action);
 
-    this.eventBus?.publish('anomaly.detected', {
+    this.bus?.publish('anomaly.detected', {
       type: anomaly.type,
       agentId: anomaly.agentId,
       details: anomaly.details,
@@ -130,7 +130,7 @@ export class ChainTransferManager {
 
   private async handleIntervention(action: InterventionAction): Promise<boolean> {
     const actionReason = 'reason' in action ? (action as { reason?: string }).reason : undefined;
-    this.eventBus?.publish('intervention.executed', {
+    this.bus?.publish('intervention.executed', {
       type: action.type,
       reason: actionReason,
     });
@@ -196,7 +196,7 @@ export class ChainTransferManager {
       duration,
     });
     this.observer?.recordHop(from, to || 'complete', duration);
-    this.eventBus?.publish('hop.recorded', {
+    this.bus?.publish('hop.recorded', {
       from,
       to: to || '',
       note,

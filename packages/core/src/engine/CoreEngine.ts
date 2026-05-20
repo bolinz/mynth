@@ -1,8 +1,8 @@
 import { AgentPool } from '../agent/AgentPool.ts';
 import { ChainTransferManager } from '../chain/ChainTransferManager.ts';
 import { GlobalMemory } from '../memory/GlobalMemory.ts';
-import { EventBus } from '../message-bus/EventBus.ts';
-import { MemoryQueue } from '../message-bus/MemoryQueue.ts';
+import type { EventBus } from '../message-bus/EventBus.ts';
+import { MessageBus } from '../message-bus/MessageBus.ts';
 import { Guard } from '../meta/Guard.ts';
 import { Intervener } from '../meta/Intervener.ts';
 import { Observer } from '../meta/Observer.ts';
@@ -32,8 +32,12 @@ export class CoreEngine {
   observer!: Observer;
   guard!: Guard;
   intervener!: Intervener;
-  eventBus!: EventBus;
+  bus!: MessageBus;
   stateStore!: StateStore;
+
+  get eventBus(): EventBus {
+    return this.bus as unknown as EventBus;
+  }
 
   constructor(private config: EngineConfig) {}
 
@@ -42,9 +46,9 @@ export class CoreEngine {
     await this.db.open();
 
     this.stateStore = new StateStore(this.db);
-    this.eventBus = new EventBus();
+    this.bus = new MessageBus();
     this.pool = new AgentPool();
-    this.pool.setEventBus(this.eventBus);
+    this.pool.setBus(this.bus);
     this.memory = new GlobalMemory(this.db);
     this.scheduler = new Scheduler();
     this.orchestrator = new Orchestrator(['reasoner', 'coder', 'reviewer']);
@@ -68,7 +72,7 @@ export class CoreEngine {
   async executeTask(description: string): Promise<TaskResult> {
     const taskId = `task_${Date.now()}`;
     await this.scheduler.submit({ id: taskId, description, priority: 1 });
-    this.eventBus.publish('task.submitted', { taskId, description });
+    this.bus.publish('task.submitted', { taskId, description });
     await this.stateStore.saveTask({
       taskId,
       description,
@@ -98,11 +102,10 @@ export class CoreEngine {
       this.observer,
       this.intervener,
       10,
-      this.eventBus,
+      this.bus as any,
     );
     const result = await chain.startChain(taskContext, analysis.firstAgent);
 
-    // Persist hops
     for (const hop of result.hopHistory) {
       await this.stateStore.saveHop(taskId, hop);
     }
@@ -115,11 +118,7 @@ export class CoreEngine {
       hops: result.hopCount,
       createdAt: Date.now(),
     });
-    this.eventBus.publish('task.completed', {
-      taskId,
-      status: result.status,
-      hops: result.hopCount,
-    });
+    this.bus.publish('task.completed', { taskId, status: result.status, hops: result.hopCount });
     return { taskId, status: result.status, hops: result.hopCount };
   }
 
