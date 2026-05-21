@@ -1,3 +1,5 @@
+export type Role = 'admin' | 'developer' | 'reviewer' | 'viewer';
+
 export interface SecurityRequest {
   agentId: string;
   action: string;
@@ -9,22 +11,103 @@ export interface SecurityCheck {
   reason?: string;
 }
 
-export class Guard {
-  private permissions = new Map<string, string[]>();
+export interface SecurityPolicy {
+  id: string;
+  name: string;
+  rule: (request: SecurityRequest) => SecurityCheck;
+}
 
-  setPermission(agentId: string, actions: string[]): void {
-    this.permissions.set(agentId, actions);
+const ROLE_PERMISSIONS: Record<Role, string[]> = {
+  admin: ['*'],
+  developer: [
+    'task.submit',
+    'task.cancel',
+    'task.view',
+    'agent.view',
+    'agent.create',
+    'tool:codegen',
+    'tool:review',
+    'tool:search',
+  ],
+  reviewer: ['task.view', 'agent.view', 'tool:review', 'tool:search'],
+  viewer: ['task.view', 'agent.view'],
+};
+
+export class Guard {
+  private agentRoles = new Map<string, Role>();
+  private policies: SecurityPolicy[] = [];
+  private toolPermissions = new Map<string, Role[]>();
+
+  constructor() {
+    this.registerDefaultPolicies();
+  }
+
+  setRole(agentId: string, role: Role): void {
+    this.agentRoles.set(agentId, role);
+  }
+
+  getRole(agentId: string): Role {
+    return this.agentRoles.get(agentId) ?? 'viewer';
+  }
+
+  setToolPermission(toolId: string, allowedRoles: Role[]): void {
+    this.toolPermissions.set(toolId, allowedRoles);
   }
 
   async checkPermission(request: SecurityRequest): Promise<SecurityCheck> {
-    const allowed = this.permissions.get(request.agentId);
-    if (!allowed) {
-      return { allowed: false, reason: 'No permissions configured' };
+    const role = this.agentRoles.get(request.agentId) ?? 'viewer';
+
+    // Check custom policies first
+    for (const policy of this.policies) {
+      const result = policy.rule(request);
+      if (!result.allowed) return result;
     }
-    return { allowed: allowed.includes(request.action) };
+
+    // Check role permissions
+    const permissions = ROLE_PERMISSIONS[role];
+    if (!permissions) {
+      return { allowed: false, reason: `Unknown role: ${role}` };
+    }
+    if (permissions.includes('*')) return { allowed: true };
+
+    if (permissions.includes(request.action)) return { allowed: true };
+
+    // Check tool-level permissions
+    if (request.action.startsWith('tool:')) {
+      const toolId = request.action.replace('tool:', '');
+      const allowedRoles = this.toolPermissions.get(toolId);
+      if (allowedRoles?.includes(role)) return { allowed: true };
+    }
+
+    return { allowed: false, reason: `Role ${role} cannot ${request.action}` };
   }
 
-  async approveTool(_toolId: string, agentId: string, _params: unknown): Promise<SecurityCheck> {
-    return this.checkPermission({ agentId, action: `tool:${_toolId}`, resource: _toolId });
+  async approveTool(toolId: string, agentId: string, _params: unknown): Promise<SecurityCheck> {
+    return this.checkPermission({
+      agentId,
+      action: `tool:${toolId}`,
+      resource: toolId,
+    });
+  }
+
+  addPolicy(policy: SecurityPolicy): void {
+    this.policies.push(policy);
+  }
+
+  getAgentRoles(): Record<string, Role> {
+    return Object.fromEntries(this.agentRoles);
+  }
+
+  private registerDefaultPolicies(): void {
+    this.addPolicy({
+      id: 'no-system-tools',
+      name: 'Block system-level tools from non-admin',
+      rule: (req) => {
+        if (req.action.startsWith('system:') && this.agentRoles.get(req.agentId) !== 'admin') {
+          return { allowed: false, reason: 'system tools require admin role' };
+        }
+        return { allowed: true };
+      },
+    });
   }
 }
