@@ -5,3 +5,5 @@ export { FallbackProvider } from './FallbackProvider.ts';
 export { CircuitBreaker } from './CircuitBreaker.ts';
 export { BudgetTracker } from './BudgetTracker.ts';
 export type { BudgetConfig, UsageRecord } from './BudgetTracker.ts';
+export { CapabilityRouter } from './CapabilityRouter.ts';
+export type { RouteResult, RoutingRule } from './CapabilityRouter.ts';

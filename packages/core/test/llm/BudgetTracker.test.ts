@@ -11,15 +11,15 @@ describe('BudgetTracker', () => {
   });
 
   it('should reject when over budget', () => {
-    const bt = new BudgetTracker({ perTaskInput: 200 });
+    const bt = new BudgetTracker({ perTask: 200 });
     bt.record('t1', 'r', 150, 50);
     bt.record('t1', 'r', 100, 50);
-    expect(bt.check('t1', 'r')).toBe(false);
+    expect(bt.check('t1', 'r').allowed).toBe(false);
   });
 
   it('should accept when under budget', () => {
-    const bt = new BudgetTracker({ perTaskInput: 1000 });
+    const bt = new BudgetTracker({ perTask: 1000 });
     bt.record('t1', 'r', 100, 50);
-    expect(bt.check('t1', 'r')).toBe(true);
+    expect(bt.check('t1', 'r').allowed).toBe(true);
   });
 });
