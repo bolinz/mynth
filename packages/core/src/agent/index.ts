@@ -7,3 +7,9 @@ export { SubAgentPool } from './SubAgentPool.ts';
 export type { ParallelResult } from './SubAgentPool.ts';
 export { WarmPool } from './WarmPool.ts';
 export type { WarmLevel } from './WarmPool.ts';
+export {
+  IncrementalContextManager,
+  FullContextManager,
+  VectorRetrievalContextManager,
+} from './ContextManager.ts';
+export type { ContextManager, ContextMode } from './ContextManager.ts';

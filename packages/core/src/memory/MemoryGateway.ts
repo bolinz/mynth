@@ -28,7 +28,8 @@ export class MemoryGateway {
   ): Promise<{ accepted: boolean; reason?: string }> {
     // Dedup: same source + key + value
     const duplicate = this.contributions.some(
-      (c) => c.source === source && c.key === key && JSON.stringify(c.value) === JSON.stringify(value),
+      (c) =>
+        c.source === source && c.key === key && JSON.stringify(c.value) === JSON.stringify(value),
     );
     if (duplicate) {
       return { accepted: false, reason: 'duplicate contribution' };
