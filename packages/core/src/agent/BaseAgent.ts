@@ -1,5 +1,7 @@
 import type { AgentId, AgentMetadata, Capability, TransferDecision } from '@mynth/sdk';
+import { PrivateMemory } from '../memory/PrivateMemory.ts';
 import type { EventBus } from '../message-bus/EventBus.ts';
+import type { Persistence } from '../persistence/Persistence.ts';
 import { type AgentState, AgentStateMachine } from './AgentState.ts';
 
 export class BaseAgent {
@@ -13,13 +15,16 @@ export class BaseAgent {
 
   private _taskCount = 0;
   private _lastState: AgentState = 'idle';
+  readonly memory: PrivateMemory;
 
   constructor(
     id: string,
     name: string,
     capabilities: Capability[],
     private eventBus?: EventBus,
+    persistence?: Persistence,
   ) {
+    this.memory = new PrivateMemory(id, persistence);
     this.id = id;
     this.name = name;
     this.capabilities = capabilities;
