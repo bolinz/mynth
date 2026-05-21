@@ -14,6 +14,15 @@ import { stopCommand } from './commands/stop.ts';
 import { startTui } from './tui/index.ts';
 import { startWebServer } from './web/server.ts';
 
+// Default to TUI when no command specified
+if (process.argv.length <= 2) {
+  const engine = new CoreEngine({ dbPath: join(homedir(), '.mynth', 'data') });
+  await engine.start();
+  await startTui(engine);
+  await engine.stop();
+  process.exit(0);
+}
+
 const engine = new CoreEngine({
   dbPath: join(homedir(), '.mynth', 'data'),
 });

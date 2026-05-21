@@ -10,18 +10,16 @@ export async function startTui(engine: CoreEngine): Promise<void> {
 
   const screen = blessed.screen({ smartCSR: true, title: 'Mynth', dockBorders: true });
 
-  // Header
   const header = blessed.box({
     top: 0,
     left: 0,
     width: '100%',
     height: 1,
     content:
-      ' {bold}Mynth TUI{/bold}  {cyan-fg}v0.1.0{/}  |  {green-fg}q{/} quit  {green-fg}Enter{/} run',
+      ' {bold}Mynth TUI{/bold}  {cyan-fg}v0.1.0{/}  |  {green-fg}q{/} quit  {green-fg}Enter{/} run  {green-fg}Esc{/} cancel  {green-fg}↑↓{/} history  {green-fg}Ctrl+L{/} clear',
     style: { fg: 'white', bg: 17 },
   });
 
-  // Agent pool panel
   const agentPanel = blessed.box({
     top: 1,
     left: 0,
@@ -35,7 +33,6 @@ export async function startTui(engine: CoreEngine): Promise<void> {
     tags: true,
   });
 
-  // Stats panel (small)
   const statsPanel = blessed.box({
     top: 1,
     left: '35%',
@@ -47,7 +44,6 @@ export async function startTui(engine: CoreEngine): Promise<void> {
     tags: true,
   });
 
-  // Task chain panel
   const chainPanel = blessed.box({
     top: '15%+1',
     left: '35%',
@@ -61,7 +57,6 @@ export async function startTui(engine: CoreEngine): Promise<void> {
     tags: true,
   });
 
-  // Event log panel
   const logPanel = blessed.box({
     top: '60%',
     left: 0,
@@ -75,7 +70,6 @@ export async function startTui(engine: CoreEngine): Promise<void> {
     tags: true,
   });
 
-  // Status bar
   const statusBar = blessed.box({
     bottom: 1,
     left: 0,
@@ -85,7 +79,6 @@ export async function startTui(engine: CoreEngine): Promise<void> {
     tags: true,
   });
 
-  // Task input
   const input = blessed.textbox({
     bottom: 0,
     left: 0,
@@ -108,6 +101,8 @@ export async function startTui(engine: CoreEngine): Promise<void> {
   let currentTask: string | null = null;
   let cancelled = false;
   let currentHops: string[] = [];
+  const commandHistory: string[] = [];
+  let historyIdx = -1;
 
   const unsubs: Array<() => void> = [];
 
@@ -161,7 +156,6 @@ export async function startTui(engine: CoreEngine): Promise<void> {
     });
     agentPanel.setContent(lines.join('\n'));
     updateStats();
-    // screen.render() already called in updateStats()
   }
 
   function updateChainPanel(chainSteps: string[]): void {
@@ -178,7 +172,6 @@ export async function startTui(engine: CoreEngine): Promise<void> {
     screen.render();
   }
 
-  // Subscribe to events
   unsubs.push(
     engine.eventBus.subscribe('agent.state_changed', (_t, p) => {
       const e = p as any;
@@ -236,9 +229,13 @@ export async function startTui(engine: CoreEngine): Promise<void> {
     }),
   );
 
-  input.on('submit', async (value: string) => {
-    const task = value.trim();
+  async function executeInTui(task: string): Promise<void> {
     if (!task) return;
+    if (task !== '' && !commandHistory.includes(task)) {
+      commandHistory.push(task);
+      if (commandHistory.length > 50) commandHistory.shift();
+    }
+    historyIdx = commandHistory.length;
     input.clearValue();
     input.readInput();
 
@@ -254,7 +251,7 @@ export async function startTui(engine: CoreEngine): Promise<void> {
     try {
       const result = await engine.executeTask(task);
       if (cancelled) {
-        log('\u2717', `{yellow-fg}Cancelled{/}`, '{yellow-fg}');
+        log('\u2717', '{yellow-fg}Cancelled{/}', '{yellow-fg}');
       } else if (currentHops.length > 0) {
         updateChainPanel([task, ...currentHops, `\u2713 ${result.status}`]);
       } else {
@@ -268,13 +265,30 @@ export async function startTui(engine: CoreEngine): Promise<void> {
     cancelled = false;
     input.show();
     screen.render();
+  }
+
+  input.on('submit', (value: string) => {
+    const task = value.trim();
+    executeInTui(task);
   });
 
-  input.focus();
-  updateAgentPanel();
-  updateChainPanel([]);
-  updateStats();
-  screen.render();
+  // Command history navigation with ↑/↓
+  input.key(['up', 'down'], (ch: any, key: { name: string }) => {
+    if (commandHistory.length === 0) return;
+    if (key.name === 'up') {
+      historyIdx = Math.max(0, historyIdx - 1);
+    } else {
+      historyIdx = Math.min(commandHistory.length - 1, historyIdx + 1);
+    }
+    input.setValue(commandHistory[historyIdx] ?? '');
+    screen.render();
+  });
+
+  // Ctrl+L clear log
+  screen.key(['C-l'], () => {
+    logPanel.setContent('');
+    screen.render();
+  });
 
   screen.key(['escape', 'c'], () => {
     if (currentTask) {
@@ -287,4 +301,10 @@ export async function startTui(engine: CoreEngine): Promise<void> {
     for (const u of unsubs) u();
     process.exit(0);
   });
+
+  input.focus();
+  updateAgentPanel();
+  updateChainPanel([]);
+  updateStats();
+  screen.render();
 }
