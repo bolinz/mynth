@@ -15,7 +15,7 @@ describe('MemoryGateway', () => {
     const mem = new GlobalMemory();
     const gw = new MemoryGateway(mem);
     await gw.writeContribution('agent-a', 'key1', 'value1');
-    const result = await gw.writeContribution('agent-a', 'key1', 'value2');
+    const result = await gw.writeContribution('agent-a', 'key1', 'value1');
     expect(result.accepted).toBe(false);
     expect(result.reason).toBe('duplicate contribution');
   });
@@ -38,7 +38,7 @@ describe('MemoryGateway', () => {
     const mem = new GlobalMemory();
     const gw = new MemoryGateway(mem);
     for (let i = 0; i < 50; i++) {
-      await gw.writeContribution('reasoner', `pattern_${i}`, 'data');
+      await gw.writeContribution('reasoner', 'same_pattern', `data_${i}`);
     }
     const skill = gw.checkSkillDistillation(50);
     expect(skill).not.toBeNull();

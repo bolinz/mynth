@@ -26,13 +26,12 @@ export class MemoryGateway {
     key: string,
     value: unknown,
   ): Promise<{ accepted: boolean; reason?: string }> {
-    // Dedup check
-    const existing = await this.memory.read(key);
-    if (existing !== null) {
-      const duplicate = this.contributions.some((c) => c.source === source && c.key === key);
-      if (duplicate) {
-        return { accepted: false, reason: 'duplicate contribution' };
-      }
+    // Dedup: same source + key + value
+    const duplicate = this.contributions.some(
+      (c) => c.source === source && c.key === key && JSON.stringify(c.value) === JSON.stringify(value),
+    );
+    if (duplicate) {
+      return { accepted: false, reason: 'duplicate contribution' };
     }
 
     // Format validation
