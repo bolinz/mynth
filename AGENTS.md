@@ -10,9 +10,10 @@ Design docs are in `docs/agent-design/` (git submodule).
 
 - **Language/Runtime**: TypeScript, Node.js
 - **Monorepo**: Turborepo + pnpm workspaces
-- **Testing**: Vitest
+- **Testing**: Vitest (147 tests, 19 test files, + bench)
 - **Lint/Format**: Biome
 - **Persistence**: LevelDB (`level` npm), self-built MemoryQueue + in-memory vectors
+- **CI**: GitHub Actions (build + test + lint on push/PR to main)
 
 ## Project structure
 
@@ -21,7 +22,7 @@ docs/agent-design/    — design docs (submodule)
 packages/
 ├── sdk/              — shared types + HttpClient
 ├── core/             — all subsystems (persistence, message-bus, vector,
-│                       agent, scheduler, memory, meta, chain, engine)
+│                       agent, scheduler, memory, meta, chain, engine, llm, prompt)
 ├── cli/              — mynth CLI (run/status/list/history/tui/ui)
 └── examples/         — simple-agent, collaboration
 ```
@@ -31,7 +32,7 @@ packages/
 ```bash
 pnpm install              # Install
 pnpm run build            # Turborepo build all
-pnpm test                 # Vitest
+pnpm test                 # Vitest (147 tests)
 pnpm run lint             # Biome check
 
 mynth run "task"          # Run chain transfer
@@ -45,11 +46,14 @@ mynth ui                  # Web UI (http://localhost:3000)
 ## Architecture
 
 - **Chain transfer**: Orchestrator infers capabilities from task → ChainTransferManager runs autonomous agent chain → each agent decides next via `decideTransfer()`
-- **Meta layer**: Observer monitors hops → Intervener acts on anomalies (warn/pause/replace/reroute/rollback/terminate)
-- **EventBus**: Pub/sub event system, 8 topics, wired into Agent/ChainTransfer/CoreEngine
+- **Meta layer**: Observer monitors hops → Intervener acts on anomalies (warn/pause/replace/reroute/rollback/terminate) → DegradationMonitor tracks health (llm/memory/messaging/agent_pool)
+- **LLM**: AnthropicProvider + OpenAIProvider → RetryProvider → FallbackProvider → CircuitBreaker. ReActLoop (Think-Act-Observe) for agent execution. BudgetTracker for token cost control.
+- **EventBus**: Pub/sub event system, 8 topics, wrapped into MessageBus with MemoryQueue point-to-point
 - **Virtual SubAgent**: `SubAgentPool` manages in-process child agents, `executeParallel()` via `Promise.allSettled`
-- **Persistence**: StateStore saves hops/tasks/agents to LevelDB, survives restart
+- **Persistence**: StateStore saves hops/tasks/agents to LevelDB, survives restart. BaseAgent has PrivateMemory with L1/L2 tiers
 - **Orchestrator**: 40+ keywords → 8 capability types, always includes reasoning
+- **Graceful shutdown**: Drain mode, waits for running tasks with timeout before closing DB
+- **Warm pool**: Three-tier (hot/warm/cold) agent pool with prefer-hot acquire and idle eviction
 
 ## Git workflow
 
@@ -69,7 +73,7 @@ main (稳定)
 
 ## Testing
 
-106 tests across 17 files. Run `pnpm test`.
+147 tests across 19 files. Run `pnpm test`.
 
 ## Key constraints
 
