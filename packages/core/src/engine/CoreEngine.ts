@@ -1,5 +1,10 @@
 import { AgentPool } from '../agent/AgentPool.ts';
 import { ChainTransferManager } from '../chain/ChainTransferManager.ts';
+import { AnthropicProvider } from '../llm/AnthropicProvider.ts';
+import { BudgetTracker } from '../llm/BudgetTracker.ts';
+import { LLMPool } from '../llm/LLMPool.ts';
+import { OpenAIProvider } from '../llm/OpenAIProvider.ts';
+import { RetryProvider } from '../llm/RetryProvider.ts';
 import { GlobalMemory } from '../memory/GlobalMemory.ts';
 import type { EventBus } from '../message-bus/EventBus.ts';
 import { MessageBus } from '../message-bus/MessageBus.ts';
@@ -10,6 +15,7 @@ import { Orchestrator } from '../meta/Orchestrator.ts';
 import { LevelDBAdapter } from '../persistence/LevelDBAdapter.ts';
 import type { Persistence } from '../persistence/Persistence.ts';
 import { StateStore } from '../persistence/StateStore.ts';
+import { PromptRegistry } from '../prompt/PromptRegistry.ts';
 import { Scheduler } from '../scheduler/Scheduler.ts';
 
 export interface EngineConfig {
@@ -34,6 +40,9 @@ export class CoreEngine {
   intervener!: Intervener;
   bus!: MessageBus;
   stateStore!: StateStore;
+  llmPool!: LLMPool;
+  budgetTracker!: BudgetTracker;
+  promptRegistry!: PromptRegistry;
 
   get eventBus(): EventBus {
     return this.bus as unknown as EventBus;
@@ -55,6 +64,26 @@ export class CoreEngine {
     this.observer = new Observer();
     this.guard = new Guard();
     this.intervener = new Intervener();
+
+    // LLM infrastructure
+    this.llmPool = new LLMPool();
+    this.budgetTracker = new BudgetTracker();
+    this.promptRegistry = new PromptRegistry();
+
+    if (process.env.ANTHROPIC_API_KEY) {
+      const anthropic = new AnthropicProvider(
+        process.env.ANTHROPIC_API_KEY,
+        'claude-sonnet-4-20250514',
+      );
+      const retry = new RetryProvider(anthropic, 3);
+      this.llmPool.register('claude-sonnet', retry);
+      this.llmPool.register('claude-haiku', retry);
+    }
+    if (process.env.OPENAI_API_KEY) {
+      const openai = new OpenAIProvider(process.env.OPENAI_API_KEY, 'gpt-4o');
+      const retry = new RetryProvider(openai, 3);
+      this.llmPool.register('gpt-4o', retry);
+    }
 
     this.registerDefaultAgents();
     this.running = true;

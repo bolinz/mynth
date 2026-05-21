@@ -7,6 +7,8 @@ export * from './scheduler/index.ts';
 export * from './memory/index.ts';
 export * from './meta/index.ts';
 export * from './chain/index.ts';
+export * from './llm/index.ts';
+export * from './prompt/index.ts';
 export * from './engine/index.ts';
 export { InProcessClient } from './client.ts';
 export type { MynthClient } from './client.ts';

@@ -10,7 +10,9 @@
       "style": {
         "noNonNullAssertion": "off",
         "useSingleVarDeclarator": "off",
-        "useNodejsImportProtocol": "off"
+        "useNodejsImportProtocol": "off",
+        "useTemplate": "off",
+        "noUnusedTemplateLiteral": "off"
       },
       "suspicious": {
         "noExplicitAny": "off"
