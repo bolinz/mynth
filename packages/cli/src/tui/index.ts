@@ -96,14 +96,14 @@ export async function startTui(engine: CoreEngine): Promise<void> {
   screen.append(statusBar);
   screen.append(input);
 
-  const taskCount = 0;
+  let taskCount = 0;
   let hopCount = 0;
-  const currentTask: string | null = null;
-  const cancelled = false;
-  const currentHops: string[] = [];
-  const currentHopDetails: Array<{ from: string; to: string; duration: number }> = [];
+  let currentTask: string | null = null;
+  let cancelled = false;
+  let currentHops: string[] = [];
+  let currentHopDetails: Array<{ from: string; to: string; duration: number }> = [];
   const commandHistory: string[] = [];
-  const historyIdx = -1;
+  let historyIdx = -1;
 
   const unsubs: Array<() => void> = [];
 
@@ -178,7 +178,9 @@ export async function startTui(engine: CoreEngine): Promise<void> {
         const boxBottom = `\u2514${'\u2500'.repeat(12)}\u2518`;
 
         lines.push(`  ${boxFrom}`);
-        lines.push(`  {cyan-fg}\u2502{/} {bold}${n1}{/}{cyan-fg}\u2502{/}${arrow}{green-fg}\u2502{/} {bold}${n2}{/}{green-fg}\u2502{/}  ${dur}`);
+        lines.push(
+          `  {cyan-fg}\u2502{/} {bold}${n1}{/}{cyan-fg}\u2502{/}${arrow}{green-fg}\u2502{/} {bold}${n2}{/}{green-fg}\u2502{/}  ${dur}`,
+        );
         lines.push(`  ${boxBottom}${' '.repeat(arrow.length)}${boxBottom}`);
       }
 
@@ -213,14 +215,13 @@ export async function startTui(engine: CoreEngine): Promise<void> {
       if (e.to) {
         currentHops.push(`${e.from} \u2192 ${e.to}`);
         currentHopDetails.push({ from: e.from, to: e.to, duration: e.duration });
-        log('\u2192', `${e.from} \u2192 {cyan-fg}${e.to}{/}  {gray-fg}(${e.duration}ms){/}`, '{cyan-fg}');
+        log(
+          '\u2192',
+          `${e.from} \u2192 {cyan-fg}${e.to}{/}  {gray-fg}(${e.duration}ms){/}`,
+          '{cyan-fg}',
+        );
       }
       updateChainPanel(currentHops, currentHopDetails);
-      updateStats();
-    }),
-  );
-      }
-      updateChainPanel(currentHops);
       updateStats();
     }),
   );
