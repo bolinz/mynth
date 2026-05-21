@@ -51,6 +51,22 @@ mynth ui                  # Web UI (http://localhost:3000)
 - **Persistence**: StateStore saves hops/tasks/agents to LevelDB, survives restart
 - **Orchestrator**: 40+ keywords → 8 capability types, always includes reasoning
 
+## Git workflow
+
+```
+main (稳定)
+  └── feat/*     新功能    → PR merge 回 main
+  └── fix/*      修复      → PR merge 回 main
+  └── refactor/* 重构      → PR merge 回 main
+  └── docs/*     文档      → 可直接提交 main
+```
+
+**Commit 格式**: `type(scope): description` — 如 `feat(core): add chain transfer manager`
+
+**版本**: milestone 后 `git tag v0.y.z`
+
+**Submodule 更新**: `cd docs/agent-design && git pull && cd ../.. && git add docs/agent-design && git commit -m "chore: update agent-design submodule"`
+
 ## Testing
 
 106 tests across 17 files. Run `pnpm test`.
