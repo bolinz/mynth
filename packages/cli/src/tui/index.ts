@@ -16,7 +16,7 @@ export async function startTui(engine: CoreEngine): Promise<void> {
     width: '100%',
     height: 1,
     content:
-      ' {bold}Mynth TUI{/bold}  {cyan-fg}v0.1.0{/}  |  {green-fg}q{/} quit  {green-fg}Enter{/} run  {green-fg}Esc{/} cancel  {green-fg}↑↓{/} history  {green-fg}Ctrl+L{/} clear',
+      ' {bold}Mynth TUI{/bold}  {cyan-fg}v0.1.0{/}  |  {green-fg}q{/} quit  {green-fg}Enter{/} run  {green-fg}Esc{/} cancel  {green-fg}↑↓{/} history  {green-fg}Ctrl+L{/} clear  {green-fg}//help{/} commands',
     style: { fg: 'white', bg: 17 },
   });
 
@@ -297,9 +297,85 @@ export async function startTui(engine: CoreEngine): Promise<void> {
   }
 
   input.on('submit', (value: string) => {
-    const task = value.trim();
-    executeInTui(task);
+    const raw = value.trim();
+    if (!raw) return;
+
+    // REPL commands (prefix /)
+    if (raw.startsWith('/')) {
+      handleCommand(raw.slice(1));
+      return;
+    }
+
+    executeInTui(raw);
   });
+
+  async function handleCommand(cmd: string): Promise<void> {
+    const [action, ...args] = cmd.split(/\s+/);
+
+    input.clearValue();
+    input.readInput();
+    input.hide();
+    screen.render();
+
+    switch (action) {
+      case 'status': {
+        const agents = engine.getAgentPool().getAllAgents();
+        const lines = agents.map((a) => {
+          const caps = a.capabilities.map((c) => c.type).join(', ');
+          return `  {bold}${a.name}{/}  {gray-fg}${a.state}{/}  [{caps}]`;
+        });
+        chainPanel.setContent(`  {cyan-fg}/status{/}\n\n${lines.join('\n')}`);
+        log('\u25b6', 'status', '{cyan-fg}');
+        break;
+      }
+      case 'list': {
+        const tasks = engine.getScheduler().getAllTasks();
+        const lines = tasks.map((t) => `  ${t.taskId.padEnd(24)} {gray-fg}${t.status}{/}`);
+        chainPanel.setContent(
+          `  {cyan-fg}/list{/}\n\n${lines.length > 0 ? lines.join('\n') : '  {gray-fg}No tasks.{/}'}`,
+        );
+        log('\u25b6', `list (${tasks.length} tasks)`, '{cyan-fg}');
+        break;
+      }
+      case 'logs': {
+        const taskId = args[0];
+        if (!taskId) {
+          chainPanel.setContent('  {red-fg}Usage: /logs <taskId>{/}');
+          break;
+        }
+        const hops = await engine.stateStore.loadTaskHops(taskId);
+        const lines = hops.map(
+          (h, i) =>
+            `  [${i + 1}] ${h.fromAgent} \u2192 ${h.toAgent || '{gray-fg}(done){/}'}  {gray-fg}${h.duration}ms{/}`,
+        );
+        chainPanel.setContent(
+          `  {cyan-fg}/logs ${taskId}{/}  {gray-fg}(${hops.length} hops){/}\n\n${lines.length > 0 ? lines.join('\n') : '  {gray-fg}No hops recorded.{/}'}`,
+        );
+        log('\u25b6', `logs ${taskId}`, '{cyan-fg}');
+        break;
+      }
+      case 'help': {
+        chainPanel.setContent(
+          '  {cyan-fg}Commands:{/}\n\n' +
+            '  {bold}/status{/}        Show agent pool\n' +
+            '  {bold}/list{/}          List tasks\n' +
+            '  {bold}/logs <id>{/}     View task hops\n' +
+            '  {bold}/help{/}          This message\n\n' +
+            '  {bold}<any text>{/}      Run a task through the chain',
+        );
+        break;
+      }
+      default: {
+        chainPanel.setContent(
+          `  {red-fg}Unknown command: /${action}{/}\n  Type {bold}/help{/} for commands.`,
+        );
+        break;
+      }
+    }
+
+    input.show();
+    screen.render();
+  }
 
   // Command history navigation with ↑/↓
   input.key(['up', 'down'], (ch: any, key: { name: string }) => {
