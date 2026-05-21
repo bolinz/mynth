@@ -10,7 +10,7 @@ Design docs are in `docs/agent-design/` (git submodule).
 
 - **Language/Runtime**: TypeScript, Node.js
 - **Monorepo**: Turborepo + pnpm workspaces
-- **Testing**: Vitest (147 tests, 19 test files, + bench)
+- **Testing**: Vitest (184 tests, 35 test files, + bench)
 - **Lint/Format**: Biome
 - **Persistence**: LevelDB (`level` npm), self-built MemoryQueue + in-memory vectors
 - **CI**: GitHub Actions (build + test + lint on push/PR to main)
@@ -32,7 +32,7 @@ packages/
 ```bash
 pnpm install              # Install
 pnpm run build            # Turborepo build all
-pnpm test                 # Vitest (147 tests)
+pnpm test                 # Vitest (184 tests)
 pnpm run lint             # Biome check
 
 mynth run "task"          # Run chain transfer
@@ -73,7 +73,7 @@ main (稳定)
 
 ## Testing
 
-147 tests across 19 files. Run `pnpm test`.
+184 tests across 35 files. Run `pnpm test`.
 
 ## Key constraints
 
