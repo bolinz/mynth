@@ -82,6 +82,19 @@ export function startWebServer(engine: CoreEngine, port = 3000): void {
       return;
     }
 
+    if (url.pathname === '/checkpoints') {
+      const taskId = url.searchParams.get('taskId');
+      if (!taskId) {
+        res.writeHead(400);
+        res.end('Missing taskId');
+        return;
+      }
+      const hops = await engine.stateStore.loadTaskHops(taskId);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(hops));
+      return;
+    }
+
     if (url.pathname === '/run' && req.method === 'POST') {
       let body = '';
       req.on('data', (chunk) => {
