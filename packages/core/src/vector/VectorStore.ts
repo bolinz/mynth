@@ -1,3 +1,5 @@
+import { IVFIndex } from './IVFIndex.ts';
+
 export interface VectorItem {
   id: string;
   vector: number[];
@@ -12,6 +14,9 @@ export interface SearchResult {
 
 export class VectorStore {
   private items = new Map<string, VectorItem>();
+  private ivf = new IVFIndex();
+  private rebuildThreshold = 50000;
+  private needsRebuild = false;
 
   constructor(private dimension: number) {}
 
@@ -22,6 +27,9 @@ export class VectorStore {
       );
     }
     this.items.set(id, { id, vector, metadata });
+    if (this.items.size >= this.rebuildThreshold) {
+      this.needsRebuild = true;
+    }
   }
 
   async addBatch(items: VectorItem[]): Promise<void> {
@@ -32,13 +40,30 @@ export class VectorStore {
 
   async search(query: number[], topK: number): Promise<SearchResult[]> {
     if (this.items.size === 0) return [];
-    const results: SearchResult[] = [];
-    for (const [id, item] of this.items) {
-      const score = this.cosineSimilarity(query, item.vector);
-      results.push({ id, score, metadata: item.metadata });
+
+    if (this.needsRebuild && this.items.size >= this.rebuildThreshold) {
+      const vecs = new Map<string, number[]>();
+      for (const [id, item] of this.items) {
+        vecs.set(id, item.vector);
+      }
+      this.ivf.train(vecs);
+      this.needsRebuild = false;
     }
-    results.sort((a, b) => b.score - a.score);
-    return results.slice(0, topK);
+
+    if (this.items.size < this.rebuildThreshold) {
+      return this.bruteForceSearch(query, topK);
+    }
+
+    const vecs = new Map<string, number[]>();
+    for (const [id, item] of this.items) {
+      vecs.set(id, item.vector);
+    }
+    const results = this.ivf.search(query, topK, vecs);
+    // Attach metadata
+    for (const r of results) {
+      r.metadata = this.items.get(r.id)?.metadata;
+    }
+    return results;
   }
 
   async update(id: string, vector: number[], metadata?: Record<string, unknown>): Promise<void> {
@@ -46,6 +71,9 @@ export class VectorStore {
       throw new Error(`Vector not found: ${id}`);
     }
     this.items.set(id, { id, vector, metadata });
+    if (this.items.size >= this.rebuildThreshold) {
+      this.needsRebuild = true;
+    }
   }
 
   async delete(id: string): Promise<void> {
@@ -64,6 +92,16 @@ export class VectorStore {
 
   size(): number {
     return this.items.size;
+  }
+
+  private bruteForceSearch(query: number[], topK: number): SearchResult[] {
+    const results: SearchResult[] = [];
+    for (const [id, item] of this.items) {
+      const score = this.cosineSimilarity(query, item.vector);
+      results.push({ id, score, metadata: item.metadata });
+    }
+    results.sort((a, b) => b.score - a.score);
+    return results.slice(0, topK);
   }
 
   private cosineSimilarity(a: number[], b: number[]): number {
