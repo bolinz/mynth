@@ -1,9 +1,12 @@
 import type { AgentId, Capability, CapabilityType, HopRecord, TaskContext } from '@mynth/sdk';
 import type { AgentPool } from '../agent/AgentPool.ts';
+import { ReActLoop } from '../agent/ReActLoop.ts';
+import type { LLMPool } from '../llm/LLMPool.ts';
 import type { MessageBus } from '../message-bus/MessageBus.ts';
 import type { InterventionAction } from '../meta/Intervener.ts';
 import type { Intervener } from '../meta/Intervener.ts';
 import type { Observer } from '../meta/Observer.ts';
+import type { PromptRegistry } from '../prompt/PromptRegistry.ts';
 
 export interface TransferResult {
   taskId: string;
@@ -27,6 +30,8 @@ export class ChainTransferManager {
     private intervener?: Intervener,
     private maxHops = 10,
     private bus?: MessageBus,
+    private llmPool?: LLMPool,
+    private promptRegistry?: PromptRegistry,
   ) {}
 
   async startChain(taskContext: TaskContext, firstAgentId: AgentId): Promise<TransferResult> {
@@ -66,7 +71,8 @@ export class ChainTransferManager {
       }
 
       agent.startWork();
-      await this.simulateWork();
+      const cap = agent.capabilities[0]?.type ?? 'reasoning';
+      await this.executeWithLLM(agent.id, this._taskContext?.description ?? '', cap);
 
       const hopStart = Date.now();
       const remaining = this.computeRemaining();
@@ -205,8 +211,29 @@ export class ChainTransferManager {
     });
   }
 
-  private async simulateWork(): Promise<void> {
-    await new Promise((r) => setTimeout(r, 20));
+  private async executeWithLLM(agentId: string, task: string, capability: string): Promise<void> {
+    if (!this.llmPool) {
+      await new Promise((r) => setTimeout(r, 20));
+      return;
+    }
+
+    try {
+      const modelName = process.env.ANTHROPIC_API_KEY
+        ? 'claude-sonnet'
+        : process.env.OPENAI_API_KEY
+          ? 'gpt-4o'
+          : 'default';
+      const provider = this.llmPool.resolve({ model: modelName });
+      const loop = new ReActLoop(provider);
+      const prompt = this.promptRegistry?.buildPrompt(capability, task, '') ?? task;
+      await loop.execute(prompt, capability);
+    } catch (err) {
+      this.bus?.publish('anomaly.detected', {
+        type: 'agent_error',
+        agentId,
+        details: { error: String(err) },
+      });
+    }
   }
 
   private success(agentId: AgentId): TransferResult {

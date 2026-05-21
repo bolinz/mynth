@@ -132,6 +132,8 @@ export class CoreEngine {
       this.intervener,
       10,
       this.bus as any,
+      this.llmPool,
+      this.promptRegistry,
     );
     const result = await chain.startChain(taskContext, analysis.firstAgent);
 
