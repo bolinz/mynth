@@ -3,170 +3,182 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mynth Web UI</title>
+<title>Mynth</title>
 <style>
+:root { --bg: #0d1117; --panel: #161b22; --border: #30363d; --text: #c9d1d9; --text-dim: #8b949e; --accent: #58a6ff; --success: #3fb950; --warn: #d29922; --danger: #f85149; --info: #79c0ff; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: 'SF Mono', 'Fira Code', monospace; background: #1a1a2e; color: #e0e0e0; padding: 20px; }
-h1 { color: #00d4aa; font-size: 20px; margin-bottom: 16px; }
-h2 { color: #888; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
-.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-.panel { background: #16213e; border: 1px solid #0f3460; border-radius: 8px; padding: 16px; }
-.panel.full { grid-column: 1 / -1; }
-.agent { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #0f3460; }
-.agent:last-child { border-bottom: none; }
-.agent-name { color: #e0e0e0; }
-.agent-state { font-size: 12px; padding: 2px 8px; border-radius: 4px; }
-.state-idle { background: #1a3a3a; color: #4ecdc4; }
-.state-working { background: #3a2a1a; color: #ffd93d; }
-.state-error { background: #3a1a1a; color: #ff6b6b; }
-.state-transferring { background: #1a2a3a; color: #6bcbff; }
-.state-shutdown { background: #2a2a2a; color: #888; }
-.caps { color: #666; font-size: 11px; margin-left: 8px; }
-#chain { min-height: 40px; padding: 8px; }
-.hop { padding: 4px 0; }
-.hop .arrow { color: #00d4aa; }
-.hop .agent { color: #ffd93d; display: inline; border: none; }
-.hop .duration { color: #666; font-size: 11px; }
-#input-area { display: flex; gap: 8px; }
-#task-input { flex: 1; background: #0f3460; border: 1px solid #1a5276; color: #e0e0e0; padding: 10px 14px; border-radius: 6px; font-family: inherit; font-size: 14px; outline: none; }
-#task-input:focus { border-color: #00d4aa; }
-#run-btn { background: #00d4aa; color: #1a1a2e; border: none; padding: 10px 20px; border-radius: 6px; font-family: inherit; font-weight: bold; cursor: pointer; }
+body { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+.header { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--border); }
+.header h1 { font-size: 18px; font-weight: 600; }
+.header h1 span { color: var(--accent); }
+.connection { font-size: 12px; padding: 4px 10px; border-radius: 12px; }
+.connected { background: #0d3a1e; color: var(--success); }
+.disconnected { background: #3a0d0d; color: var(--danger); }
+.dashboard { display: grid; grid-template-columns: 300px 1fr 1fr; grid-template-rows: auto 1fr auto; gap: 12px; padding: 16px 24px; height: calc(100vh - 60px); }
+.card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+.card h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-dim); margin-bottom: 12px; }
+
+/* Agent cards */
+.agent-list { display: flex; flex-direction: column; gap: 8px; }
+.agent-card { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; }
+.agent-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dot-idle { background: var(--text-dim); }
+.dot-working { background: var(--warn); animation: pulse 1s infinite; }
+.dot-error { background: var(--danger); }
+.dot-transferring { background: var(--info); }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+.agent-info { flex: 1; }
+.agent-name { font-weight: 500; font-size: 13px; }
+.agent-cap { font-size: 11px; color: var(--text-dim); }
+.agent-state { font-size: 11px; padding: 2px 8px; border-radius: 10px; }
+.state-idle { background: #1a1a2e; color: var(--text-dim); }
+.state-working { background: #3a2a1a; color: var(--warn); }
+.state-error { background: #3a1a1a; color: var(--danger); }
+
+/* Chain vis */
+#chain-viz { min-height: 120px; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; }
+.chain-node { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 20px; font-size: 13px; }
+.chain-node .dot { width: 6px; height: 6px; border-radius: 50%; }
+.chain-arrow { color: var(--text-dim); font-size: 16px; }
+
+/* Log */
+#log { max-height: 200px; overflow-y: auto; font-size: 12px; line-height: 1.8; grid-column: 1 / -1; }
+.log-entry { padding: 2px 0; display: flex; gap: 8px; }
+.log-time { color: var(--text-dim); min-width: 70px; }
+
+/* Stats row */
+.stats { display: flex; gap: 16px; grid-column: 2 / -1; }
+.stat { flex: 1; text-align: center; }
+.stat-value { font-size: 28px; font-weight: 700; }
+.stat-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; }
+
+/* Input */
+.input-row { display: flex; gap: 8px; grid-column: 1 / -1; }
+#task-input { flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 10px 14px; border-radius: 6px; font-size: 14px; outline: none; }
+#task-input:focus { border-color: var(--accent); }
+#run-btn { background: var(--accent); color: #fff; border: none; padding: 10px 24px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; }
 #run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-#run-btn:hover:not(:disabled) { background: #00e6b3; }
-#log { max-height: 300px; overflow-y: auto; font-size: 12px; line-height: 1.6; }
-.log-entry { padding: 2px 0; border-bottom: 1px solid #0f3460; }
-.log-time { color: #555; margin-right: 8px; }
-.log-hop { color: #6bcbff; }
-.log-anomaly { color: #ff6b6b; }
-.log-intervention { color: #ffd93d; }
-.log-done { color: #4ecdc4; }
-#status-bar { text-align: center; color: #555; font-size: 11px; margin-top: 16px; }
-.connecting { color: #ffd93d; }
-.connected { color: #4ecdc4; }
-.disconnected { color: #ff6b6b; }
 </style>
 </head>
 <body>
-<h1>╲ Mynth Web UI</h1>
-<div class="grid">
-  <div class="panel" id="agent-panel">
+<div class="header">
+  <h1>mynth <span>Web UI</span></h1>
+  <span id="status-badge" class="connection disconnected">Disconnected</span>
+</div>
+
+<div class="dashboard">
+  <div class="card" style="grid-row: 1 / 3;">
     <h2>Agent Pool</h2>
-    <div id="agent-list"></div>
+    <div id="agent-list" class="agent-list"></div>
   </div>
-  <div class="panel" id="chain-panel">
+
+  <div class="stats">
+    <div class="stat"><div class="stat-value" id="stat-tasks">0</div><div class="stat-label">Tasks</div></div>
+    <div class="stat"><div class="stat-value" id="stat-hops">0</div><div class="stat-label">Hops</div></div>
+    <div class="stat"><div class="stat-value" id="stat-agents">0</div><div class="stat-label">Agents</div></div>
+  </div>
+
+  <div class="card">
     <h2>Chain</h2>
-    <div id="chain">Waiting for task...</div>
+    <div id="chain-viz">Waiting for task...</div>
+  </div>
+
+  <div class="card" id="log">
+    <h2>Event Log</h2>
+  </div>
+
+  <div class="input-row">
+    <input type="text" id="task-input" placeholder="Enter a task..." autofocus>
+    <button id="run-btn" onclick="runTask()">Run</button>
   </div>
 </div>
-<div class="panel full" id="log-panel">
-  <h2>Event Log</h2>
-  <div id="log"></div>
-</div>
-<div class="panel full" id="input-area">
-  <input type="text" id="task-input" placeholder="Type a task and press Enter..." autofocus>
-  <button id="run-btn" onclick="runTask()">Run</button>
-</div>
-<div id="status-bar" class="connecting">Connecting...</div>
 
 <script>
 const evtSource = new EventSource('/events');
+const badge = document.getElementById('status-badge');
+const agentList = document.getElementById('agent-list');
+const chainViz = document.getElementById('chain-viz');
 const logEl = document.getElementById('log');
-const chainEl = document.getElementById('chain');
-const agentListEl = document.getElementById('agent-list');
-const taskInput = document.getElementById('task-input');
-const runBtn = document.getElementById('run-btn');
-const statusBar = document.getElementById('status-bar');
+const statTasks = document.getElementById('stat-tasks');
+const statHops = document.getElementById('stat-hops');
+const statAgents = document.getElementById('stat-agents');
 
-evtSource.onopen = () => {
-  statusBar.textContent = 'Connected';
-  statusBar.className = 'connected';
-};
+evtSource.onopen = () => { badge.textContent = 'Connected'; badge.className = 'connection connected'; };
+evtSource.onerror = () => { badge.textContent = 'Disconnected'; badge.className = 'connection disconnected'; };
 
-evtSource.onerror = () => {
-  statusBar.textContent = 'Disconnected';
-  statusBar.className = 'disconnected';
-};
+let totalHops = 0;
 
-function log(msg, cls = '') {
-  const time = new Date().toLocaleTimeString();
+function ts() { return new Date().toLocaleTimeString(); }
+
+function log(msg) {
   const el = document.createElement('div');
-  el.className = `log-entry ${cls}`;
-  el.innerHTML = `<span class="log-time">[${time}]</span>${msg}`;
+  el.className = 'log-entry';
+  el.innerHTML = `<span class="log-time">[${ts()}]</span><span>${msg}</span>`;
   logEl.appendChild(el);
   logEl.scrollTop = logEl.scrollHeight;
 }
 
-async function updateAgents() {
+async function updateStats() {
+  const [agentsRes, tasksRes] = await Promise.all([fetch('/status'), fetch('/tasks')]);
+  const agents = await agentsRes.json();
+  const tasks = await tasksRes.json();
+  statAgents.textContent = agents.length;
+  statTasks.textContent = tasks.length;
+}
+
+async function renderAgents() {
   const res = await fetch('/status');
   const agents = await res.json();
-  agentListEl.innerHTML = agents.map(a => {
+  agentList.innerHTML = agents.map(a => {
     const stateClass = `state-${a.state}`;
+    const dotClass = `dot-${a.state}`;
     const caps = a.capabilities.join(', ');
-    return `<div class="agent"><span><span class="agent-name">${a.name}</span><span class="caps">[${caps}]</span></span><span class="agent-state ${stateClass}">${a.state}</span></div>`;
+    return `<div class="agent-card"><div class="agent-dot ${dotClass}"></div><div class="agent-info"><div class="agent-name">${a.name}</div><div class="agent-cap">[${caps}]</div></div><span class="agent-state ${stateClass}">${a.state}</span></div>`;
   }).join('');
 }
 
-async function runTask() {
-  const task = taskInput.value.trim();
-  if (!task) return;
-  taskInput.value = '';
-  runBtn.disabled = true;
-
-  chainEl.innerHTML = `<div class="hop">Running: ${task}...</div>`;
-  log(`Running: <b>${task}</b>`, 'log-hop');
-
-  try {
-    const res = await fetch('/run', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ task }),
-    });
-    const result = await res.json();
-    chainEl.innerHTML = `<div class="hop">${task} — <span class="arrow">\u2713 ${result.status}</span> (${result.hops} hops)</div>`;
-    log(`<span class="arrow">\u2713 ${result.taskId}: ${result.status}</span>`, 'log-done');
-  } catch (err) {
-    log(`<span class="log-anomaly">\u2717 Error: ${err}</span>`);
-  }
-
-  runBtn.disabled = false;
-  taskInput.focus();
+function renderChain(task, hops) {
+  if (!task) { chainViz.textContent = 'Waiting for task...'; return; }
+  if (hops.length === 0) { chainViz.innerHTML = `<div class="chain-node">${task}</div>`; return; }
+  const nodes = hops.map((h, i) => {
+    const arrow = i < hops.length - 1 ? '<span class="chain-arrow">→</span>' : '';
+    return `<span class="chain-node"><span class="dot" style="background:var(--success)"></span>${h.fromAgent || h}${h.toAgent ? ' → ' + h.toAgent : ''}</span>${arrow}`;
+  }).join('');
+  chainViz.innerHTML = `<div style="width:100%;margin-bottom:8px;font-size:12px;color:var(--text-dim)">${task}</div><div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px">${nodes}</div>`;
 }
 
-taskInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') runTask();
-});
+async function runTask() {
+  const input = document.getElementById('task-input');
+  const btn = document.getElementById('run-btn');
+  const task = input.value.trim();
+  if (!task) return;
+  input.value = ''; btn.disabled = true;
+  log(`Running: <b>${task}</b>`);
+  renderChain(task, [{ fromAgent: '...' }]);
+  try {
+    const res = await fetch('/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ task }) });
+    const result = await res.json();
+    statHops.textContent = totalHops + result.hops;
+    renderChain(task, Array.from({ length: result.hops }, (_, i) => ({ fromAgent: `hop ${i + 1}` })));
+    log(`✓ ${result.taskId}: ${result.status} (${result.hops} hops)`);
+  } catch (err) { log(`✗ Error: ${err}`); }
+  btn.disabled = false; input.focus();
+}
 
-// SSE events
-evtSource.addEventListener('agent.state_changed', (e) => {
+document.getElementById('task-input').addEventListener('keydown', e => { if (e.key === 'Enter') runTask(); });
+
+evtSource.addEventListener('hop.recorded', e => {
   const { payload } = JSON.parse(e.data);
-  log(`${payload.fromState} \u2192 ${payload.toState} (${payload.agentId})`);
-  updateAgents();
+  if (payload.to) log(`${payload.from} → ${payload.to} (${payload.duration}ms)`);
+  totalHops++;
+  statHops.textContent = totalHops;
 });
+evtSource.addEventListener('agent.state_changed', () => renderAgents());
+evtSource.addEventListener('task.completed', e => { const { payload } = JSON.parse(e.data); statHops.textContent = totalHops; updateStats(); });
+evtSource.addEventListener('anomaly.detected', e => { const { payload } = JSON.parse(e.data); log(`⚠ ${payload.type}`); });
+evtSource.addEventListener('intervention.executed', e => { const { payload } = JSON.parse(e.data); log(`ℹ ${payload.type}`); });
 
-evtSource.addEventListener('hop.recorded', (e) => {
-  const { payload } = JSON.parse(e.data);
-  if (payload.to) {
-    log(`<span class="log-hop">${payload.from} \u2192 ${payload.to}</span> (${payload.duration}ms)`);
-  }
-});
-
-evtSource.addEventListener('anomaly.detected', (e) => {
-  const { payload } = JSON.parse(e.data);
-  log(`<span class="log-anomaly">\u26a0 ${payload.type}${payload.agentId ? ' (' + payload.agentId + ')' : ''}</span>`);
-});
-
-evtSource.addEventListener('intervention.executed', (e) => {
-  const { payload } = JSON.parse(e.data);
-  log(`<span class="log-intervention">\u2139 ${payload.type}</span>`);
-});
-
-evtSource.addEventListener('task.completed', (e) => {
-  const { payload } = JSON.parse(e.data);
-  log(`<span class="log-done">\u2713 ${payload.taskId}: ${payload.status} (${payload.hops || '?'} hops)</span>`);
-});
-
-// Initial load
-updateAgents();
+updateStats(); renderAgents();
 </script>
 </body>
 </html>
