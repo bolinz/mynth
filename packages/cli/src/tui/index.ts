@@ -96,13 +96,14 @@ export async function startTui(engine: CoreEngine): Promise<void> {
   screen.append(statusBar);
   screen.append(input);
 
-  let taskCount = 0;
+  const taskCount = 0;
   let hopCount = 0;
-  let currentTask: string | null = null;
-  let cancelled = false;
-  let currentHops: string[] = [];
+  const currentTask: string | null = null;
+  const cancelled = false;
+  const currentHops: string[] = [];
+  const currentHopDetails: Array<{ from: string; to: string; duration: number }> = [];
   const commandHistory: string[] = [];
-  let historyIdx = -1;
+  const historyIdx = -1;
 
   const unsubs: Array<() => void> = [];
 
@@ -158,8 +159,31 @@ export async function startTui(engine: CoreEngine): Promise<void> {
     updateStats();
   }
 
-  function updateChainPanel(chainSteps: string[]): void {
-    if (chainSteps.length === 0) {
+  function updateChainPanel(
+    chainSteps: string[],
+    hopDetails?: Array<{ from: string; to: string; duration: number }>,
+  ): void {
+    if (hopDetails && hopDetails.length > 0) {
+      const lines: string[] = [];
+
+      // Draw agents
+      for (let i = 0; i < hopDetails.length; i++) {
+        const { from, to, duration } = hopDetails[i];
+        const n1 = from.padEnd(10);
+        const arrow = ` \u2500\u2500\u2500\u251c\u27a4 `;
+        const n2 = to.padEnd(10);
+        const dur = `{gray-fg}${duration}ms{/}`;
+        const boxFrom = `{cyan-fg}\u250c${'\u2500'.repeat(12)}\u2510{/}`;
+        const boxTo = `{green-fg}\u250c${'\u2500'.repeat(12)}\u2510{/}`;
+        const boxBottom = `\u2514${'\u2500'.repeat(12)}\u2518`;
+
+        lines.push(`  ${boxFrom}`);
+        lines.push(`  {cyan-fg}\u2502{/} {bold}${n1}{/}{cyan-fg}\u2502{/}${arrow}{green-fg}\u2502{/} {bold}${n2}{/}{green-fg}\u2502{/}  ${dur}`);
+        lines.push(`  ${boxBottom}${' '.repeat(arrow.length)}${boxBottom}`);
+      }
+
+      chainPanel.setContent(lines.join('\n'));
+    } else if (chainSteps.length === 0) {
       chainPanel.setContent('  {gray-fg}No active task.\n  Type a task below and press Enter.{/}');
     } else {
       const lines = chainSteps.map((s, i) => {
@@ -188,11 +212,13 @@ export async function startTui(engine: CoreEngine): Promise<void> {
       hopCount++;
       if (e.to) {
         currentHops.push(`${e.from} \u2192 ${e.to}`);
-        log(
-          '\u2192',
-          `${e.from} \u2192 {cyan-fg}${e.to}{/}  {gray-fg}(${e.duration}ms){/}`,
-          '{cyan-fg}',
-        );
+        currentHopDetails.push({ from: e.from, to: e.to, duration: e.duration });
+        log('\u2192', `${e.from} \u2192 {cyan-fg}${e.to}{/}  {gray-fg}(${e.duration}ms){/}`, '{cyan-fg}');
+      }
+      updateChainPanel(currentHops, currentHopDetails);
+      updateStats();
+    }),
+  );
       }
       updateChainPanel(currentHops);
       updateStats();
@@ -210,6 +236,7 @@ export async function startTui(engine: CoreEngine): Promise<void> {
         '{green-fg}',
       );
       currentHops = [];
+      currentHopDetails = [];
       updateChainPanel([]);
       updateStats();
     }),
@@ -241,6 +268,7 @@ export async function startTui(engine: CoreEngine): Promise<void> {
 
     currentTask = task;
     currentHops = [];
+    currentHopDetails = [];
     cancelled = false;
     log('\u25b6', `Running: {yellow-fg}${task}{/}`, '{cyan-fg}');
     updateChainPanel([`Analyzing: ${task}`]);
@@ -252,8 +280,8 @@ export async function startTui(engine: CoreEngine): Promise<void> {
       const result = await engine.executeTask(task);
       if (cancelled) {
         log('\u2717', '{yellow-fg}Cancelled{/}', '{yellow-fg}');
-      } else if (currentHops.length > 0) {
-        updateChainPanel([task, ...currentHops, `\u2713 ${result.status}`]);
+      } else if (currentHopDetails.length > 0) {
+        updateChainPanel([], currentHopDetails);
       } else {
         updateChainPanel([task, `\u2713 ${result.status}`]);
       }
