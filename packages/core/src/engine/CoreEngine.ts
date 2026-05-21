@@ -17,6 +17,7 @@ import type { Persistence } from '../persistence/Persistence.ts';
 import { StateStore } from '../persistence/StateStore.ts';
 import { PromptRegistry } from '../prompt/PromptRegistry.ts';
 import { Scheduler } from '../scheduler/Scheduler.ts';
+import { GracefulShutdown } from './GracefulShutdown.ts';
 
 export interface EngineConfig {
   dbPath: string;
@@ -43,6 +44,7 @@ export class CoreEngine {
   llmPool!: LLMPool;
   budgetTracker!: BudgetTracker;
   promptRegistry!: PromptRegistry;
+  shutdown!: GracefulShutdown;
 
   get eventBus(): EventBus {
     return this.bus as unknown as EventBus;
@@ -85,13 +87,17 @@ export class CoreEngine {
       this.llmPool.register('gpt-4o', retry);
     }
 
+    this.shutdown = new GracefulShutdown(this.scheduler, this.memory, this.db, {
+      drainTimeout: 10000,
+    });
+
     this.registerDefaultAgents();
     this.running = true;
   }
 
   async stop(): Promise<void> {
     this.running = false;
-    await this.db.close();
+    await this.shutdown.shutdown();
   }
 
   isRunning(): boolean {
