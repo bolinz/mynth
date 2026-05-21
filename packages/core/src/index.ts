@@ -13,3 +13,4 @@ export * from './engine/index.ts';
 export { InProcessClient } from './client.ts';
 export type { MynthClient } from './client.ts';
 export type { StoredTask, StoredAgentConfig } from './persistence/StateStore.ts';
+export * from './config/index.ts';
