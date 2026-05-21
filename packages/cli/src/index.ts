@@ -1,9 +1,8 @@
 #!/usr/bin/env node
-import { homedir } from 'os';
-import { join } from 'path';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { CoreEngine } from '@mynth/core';
 import { cac } from 'cac';
-import { version } from '../package.json' with { type: 'json' };
 import { historyCommand } from './commands/history.ts';
 import { initCommand } from './commands/init.ts';
 import { listCommand } from './commands/list.ts';
@@ -86,5 +85,5 @@ cli.command('stop <taskId>', 'Cancel a running task').action(async (taskId: stri
 });
 
 cli.help();
-cli.version(version);
+cli.version('0.2.1');
 cli.parse();

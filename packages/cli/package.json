@@ -4,10 +4,11 @@
   "private": true,
   "type": "module",
   "bin": {
-    "mynth": "./src/index.ts"
+    "mynth": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc",
+    "build:dist": "tsup",
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit"
   },
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "tsup": "^8.4.0",
     "typescript": "^5.7.3",
     "vitest": "^3.0.5"
   }
