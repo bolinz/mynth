@@ -106,6 +106,10 @@ export async function startTui(engine: CoreEngine): Promise<void> {
   let taskCount = 0;
   let hopCount = 0;
   let currentTask: string | null = null;
+  let cancelled = false;
+  let currentHops: string[] = [];
+
+  const unsubs: Array<() => void> = [];
 
   function log(prefix: string, msg: string, color: string): void {
     const line = `  {gray-fg}[${ts()}]{/} ${color}${prefix}{/} ${msg}`;
@@ -157,7 +161,7 @@ export async function startTui(engine: CoreEngine): Promise<void> {
     });
     agentPanel.setContent(lines.join('\n'));
     updateStats();
-    screen.render();
+    // screen.render() already called in updateStats()
   }
 
   function updateChainPanel(chainSteps: string[]): void {
@@ -175,49 +179,62 @@ export async function startTui(engine: CoreEngine): Promise<void> {
   }
 
   // Subscribe to events
-  engine.eventBus.subscribe('agent.state_changed', (_t, p) => {
-    const e = p as any;
-    if (e.toState === 'working') {
-      log('\u25b6', `${e.agentId} ${e.fromState} \u2192 {green-fg}${e.toState}{/}`, '{cyan-fg}');
-    }
-    updateAgentPanel();
-  });
+  unsubs.push(
+    engine.eventBus.subscribe('agent.state_changed', (_t, p) => {
+      const e = p as any;
+      if (e.toState === 'working') {
+        log('\u25b6', `${e.agentId} ${e.fromState} \u2192 {green-fg}${e.toState}{/}`, '{cyan-fg}');
+      }
+      updateAgentPanel();
+    }),
+  );
 
-  engine.eventBus.subscribe('hop.recorded', (_t, p) => {
-    const e = p as any;
-    hopCount++;
-    if (e.to) {
+  unsubs.push(
+    engine.eventBus.subscribe('hop.recorded', (_t, p) => {
+      const e = p as any;
+      hopCount++;
+      if (e.to) {
+        currentHops.push(`${e.from} \u2192 ${e.to}`);
+        log(
+          '\u2192',
+          `${e.from} \u2192 {cyan-fg}${e.to}{/}  {gray-fg}(${e.duration}ms){/}`,
+          '{cyan-fg}',
+        );
+      }
+      updateChainPanel(currentHops);
+      updateStats();
+    }),
+  );
+
+  unsubs.push(
+    engine.eventBus.subscribe('task.completed', (_t, p) => {
+      const e = p as any;
+      taskCount++;
+      currentTask = null;
       log(
-        '\u2192',
-        `${e.from} \u2192 {cyan-fg}${e.to}{/}  {gray-fg}(${e.duration}ms){/}`,
-        '{cyan-fg}',
+        '\u2713',
+        `{green-fg}${e.taskId}{/}: {bold}${e.status}{/bold}  ({e.hops} hops)`,
+        '{green-fg}',
       );
-    }
-    updateStats();
-  });
+      currentHops = [];
+      updateChainPanel([]);
+      updateStats();
+    }),
+  );
 
-  engine.eventBus.subscribe('task.completed', (_t, p) => {
-    const e = p as any;
-    taskCount++;
-    currentTask = null;
-    log(
-      '\u2713',
-      `{green-fg}${e.taskId}{/}: {bold}${e.status}{/bold}  ({e.hops} hops)`,
-      '{green-fg}',
-    );
-    updateChainPanel([]);
-    updateStats();
-  });
+  unsubs.push(
+    engine.eventBus.subscribe('anomaly.detected', (_t, p) => {
+      const e = p as any;
+      log('\u26a0', `{red-fg}${e.type}{/}${e.agentId ? ' (' + e.agentId + ')' : ''}`, '{red-fg}');
+    }),
+  );
 
-  engine.eventBus.subscribe('anomaly.detected', (_t, p) => {
-    const e = p as any;
-    log('\u26a0', `{red-fg}${e.type}{/}${e.agentId ? ' (' + e.agentId + ')' : ''}`, '{red-fg}');
-  });
-
-  engine.eventBus.subscribe('intervention.executed', (_t, p) => {
-    const e = p as any;
-    log('\u2139', `{yellow-fg}${e.type}{/}`, '{yellow-fg}');
-  });
+  unsubs.push(
+    engine.eventBus.subscribe('intervention.executed', (_t, p) => {
+      const e = p as any;
+      log('\u2139', `{yellow-fg}${e.type}{/}`, '{yellow-fg}');
+    }),
+  );
 
   input.on('submit', async (value: string) => {
     const task = value.trim();
@@ -226,7 +243,8 @@ export async function startTui(engine: CoreEngine): Promise<void> {
     input.readInput();
 
     currentTask = task;
-    taskCount++;
+    currentHops = [];
+    cancelled = false;
     log('\u25b6', `Running: {yellow-fg}${task}{/}`, '{cyan-fg}');
     updateChainPanel([`Analyzing: ${task}`]);
     updateStats();
@@ -235,20 +253,19 @@ export async function startTui(engine: CoreEngine): Promise<void> {
 
     try {
       const result = await engine.executeTask(task);
-      updateChainPanel(
-        result.hops > 0
-          ? [
-              task,
-              ...Array.from({ length: result.hops }, (_, i) => `Hop ${i + 1}`),
-              `\u2713 ${result.status}`,
-            ]
-          : [task, `\u2713 ${result.status}`],
-      );
+      if (cancelled) {
+        log('\u2717', `{yellow-fg}Cancelled{/}`, '{yellow-fg}');
+      } else if (currentHops.length > 0) {
+        updateChainPanel([task, ...currentHops, `\u2713 ${result.status}`]);
+      } else {
+        updateChainPanel([task, `\u2713 ${result.status}`]);
+      }
     } catch (err) {
       log('\u2717', `{red-fg}Error: ${String(err)}{/}`, '{red-fg}');
     }
 
     currentTask = null;
+    cancelled = false;
     input.show();
     screen.render();
   });
@@ -259,5 +276,15 @@ export async function startTui(engine: CoreEngine): Promise<void> {
   updateStats();
   screen.render();
 
-  screen.key(['q', 'C-c'], () => process.exit(0));
+  screen.key(['escape', 'c'], () => {
+    if (currentTask) {
+      cancelled = true;
+      log('\u2717', '{yellow-fg}Cancelling task...{/}', '{yellow-fg}');
+    }
+  });
+
+  screen.key(['q', 'C-c'], () => {
+    for (const u of unsubs) u();
+    process.exit(0);
+  });
 }
