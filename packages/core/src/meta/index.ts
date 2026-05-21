@@ -6,3 +6,5 @@ export { Guard } from './Guard.ts';
 export type { SecurityRequest, SecurityCheck } from './Guard.ts';
 export { Intervener } from './Intervener.ts';
 export type { InterventionAction, AnomalyEvent } from './Intervener.ts';
+export { DegradationMonitor } from './DegradationMonitor.ts';
+export type { DimensionHealth, DegradationLevel, DimensionState } from './DegradationMonitor.ts';

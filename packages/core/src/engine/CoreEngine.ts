@@ -8,6 +8,7 @@ import { RetryProvider } from '../llm/RetryProvider.ts';
 import { GlobalMemory } from '../memory/GlobalMemory.ts';
 import type { EventBus } from '../message-bus/EventBus.ts';
 import { MessageBus } from '../message-bus/MessageBus.ts';
+import { DegradationMonitor } from '../meta/DegradationMonitor.ts';
 import { Guard } from '../meta/Guard.ts';
 import { Intervener } from '../meta/Intervener.ts';
 import { Observer } from '../meta/Observer.ts';
@@ -45,6 +46,7 @@ export class CoreEngine {
   budgetTracker!: BudgetTracker;
   promptRegistry!: PromptRegistry;
   shutdown!: GracefulShutdown;
+  degradation!: DegradationMonitor;
 
   get eventBus(): EventBus {
     return this.bus as unknown as EventBus;
@@ -90,6 +92,7 @@ export class CoreEngine {
     this.shutdown = new GracefulShutdown(this.scheduler, this.memory, this.db, {
       drainTimeout: 10000,
     });
+    this.degradation = new DegradationMonitor();
 
     this.registerDefaultAgents();
     this.running = true;
