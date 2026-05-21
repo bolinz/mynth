@@ -5,9 +5,12 @@ import { CoreEngine } from '@mynth/core';
 import { cac } from 'cac';
 import { version } from '../package.json' with { type: 'json' };
 import { historyCommand } from './commands/history.ts';
+import { initCommand } from './commands/init.ts';
 import { listCommand } from './commands/list.ts';
+import { logsCommand } from './commands/logs.ts';
 import { runCommand } from './commands/run.ts';
 import { statusCommand } from './commands/status.ts';
+import { stopCommand } from './commands/stop.ts';
 import { startTui } from './tui/index.ts';
 import { startWebServer } from './web/server.ts';
 
@@ -54,6 +57,22 @@ cli.command('ui', 'Launch Web UI (http://localhost:3000)').action(async () => {
 cli.command('history', 'Show task history and persisted state').action(async () => {
   await engine.start();
   await historyCommand(engine);
+  await engine.stop();
+});
+
+cli.command('init [project]', 'Initialize a new mynth project').action(async () => {
+  await initCommand();
+});
+
+cli.command('logs <taskId>', 'View task execution log').action(async (taskId: string) => {
+  await engine.start();
+  await logsCommand(engine, taskId);
+  await engine.stop();
+});
+
+cli.command('stop <taskId>', 'Cancel a running task').action(async (taskId: string) => {
+  await engine.start();
+  await stopCommand(engine, taskId);
   await engine.stop();
 });
 
