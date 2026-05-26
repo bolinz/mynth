@@ -99,7 +99,13 @@ export class CoreEngine {
     this.pool.setBus(this.bus);
     this.memory = new GlobalMemory(this.db);
     this.scheduler = new Scheduler();
-    this.orchestrator = new Orchestrator(this.parsedConfig.agents.map((a) => a.id));
+    this.orchestrator = new Orchestrator(
+      this.parsedConfig.agents.map((a) => a.id),
+      this.parsedConfig.agents.map((a) => ({
+        agentId: a.id,
+        capabilities: a.capabilities.map((c) => c.type),
+      })),
+    );
     this.observer = new Observer();
     this.guard = new Guard();
     this.intervener = new Intervener();

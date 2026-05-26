@@ -1,5 +1,10 @@
 import type { AgentId, HandoverConstraints, Task, TaskContext } from '@mynth/sdk';
 
+export interface AgentCapabilityMap {
+  agentId: AgentId;
+  capabilities: string[];
+}
+
 export interface ChainAnalysis {
   firstAgent: AgentId;
   capabilities: string[];
@@ -59,7 +64,18 @@ const KEYWORD_MAP: Record<string, string[]> = {
 const ALL_CAPABILITIES = Object.keys(KEYWORD_MAP);
 
 export class Orchestrator {
-  constructor(private agentIds: AgentId[]) {}
+  private agentMap = new Map<AgentId, string[]>();
+
+  constructor(
+    private agentIds: AgentId[],
+    agentCapabilities?: AgentCapabilityMap[],
+  ) {
+    if (agentCapabilities) {
+      for (const entry of agentCapabilities) {
+        this.agentMap.set(entry.agentId, entry.capabilities);
+      }
+    }
+  }
 
   async analyze(task: Task): Promise<ChainAnalysis> {
     const capabilities = this.inferCapabilities(task.description);
@@ -109,8 +125,12 @@ export class Orchestrator {
   private selectFirst(capabilities: string[]): AgentId {
     if (capabilities.length === 0) return this.agentIds[0] ?? '';
 
-    // Try to find an agent that handles the first (or reasoning) capability
     for (const cap of capabilities) {
+      // Try explicit mapping first
+      for (const [agentId, caps] of this.agentMap) {
+        if (caps.includes(cap)) return agentId;
+      }
+      // Fall back to substring matching (backward compat)
       const agent = this.agentIds.find((id) => id.includes(cap));
       if (agent) return agent;
     }
