@@ -76,7 +76,11 @@ export class ChainTransferManager {
 
       agent.startWork();
       const cap = agent.capabilities[0]?.type ?? 'reasoning';
-      const llmResult = await this.executeWithLLM(agent.id, this._taskContext?.description ?? '', cap);
+      const llmResult = await this.executeWithLLM(
+        agent.id,
+        this._taskContext?.description ?? '',
+        cap,
+      );
 
       agent.lastLlmOutput = llmResult ?? '';
 
@@ -85,9 +89,7 @@ export class ChainTransferManager {
       const decision = agent.decideTransfer(remaining, this.pool);
       const duration = Date.now() - hopStart;
 
-      const llmSummary = agent.lastLlmOutput
-        ? agent.lastLlmOutput.slice(0, 200)
-        : '';
+      const llmSummary = agent.lastLlmOutput ? agent.lastLlmOutput.slice(0, 200) : '';
       const note = decision.reason + (llmSummary ? ` | ${llmSummary}` : '');
 
       this.recordHop(
@@ -167,13 +169,14 @@ export class ChainTransferManager {
           .filter((a) => a.id !== this._currentAgentId && a.state === 'idle');
         if (idleAgents.length === 0) return false;
         const remaining = this.computeRemaining();
-        const capableAgent = remaining.length > 0
-          ? idleAgents.find((a) =>
-              remaining.every((r) =>
-                a.capabilities.some((c) => c.type === r.type && c.level >= r.level),
-              ),
-            )
-          : undefined;
+        const capableAgent =
+          remaining.length > 0
+            ? idleAgents.find((a) =>
+                remaining.every((r) =>
+                  a.capabilities.some((c) => c.type === r.type && c.level >= r.level),
+                ),
+              )
+            : undefined;
         const replacement = capableAgent ?? idleAgents[0];
         this._currentAgentId = replacement.id;
         replacement.assignTask(this._taskContext!);
@@ -253,8 +256,9 @@ export class ChainTransferManager {
         ? this.capabilityRouter.resolve(capability)?.provider
         : null;
 
-      const provider = resolvedProvider
-        ?? (process.env.ANTHROPIC_API_KEY
+      const provider =
+        resolvedProvider ??
+        (process.env.ANTHROPIC_API_KEY
           ? this.llmPool.resolve({ model: 'claude-sonnet' })
           : process.env.OPENAI_API_KEY
             ? this.llmPool.resolve({ model: 'gpt-4o' })

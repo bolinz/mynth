@@ -1,5 +1,6 @@
 import { AgentPool } from '../agent/AgentPool.ts';
 import { ChainTransferManager } from '../chain/ChainTransferManager.ts';
+import { EngineConfigSchema, type ValidatedEngineConfig } from '../config/schema.ts';
 import { AnthropicProvider } from '../llm/AnthropicProvider.ts';
 import { BudgetTracker } from '../llm/BudgetTracker.ts';
 import { CapabilityRouter } from '../llm/CapabilityRouter.ts';
@@ -19,7 +20,6 @@ import type { Persistence } from '../persistence/Persistence.ts';
 import { StateStore } from '../persistence/StateStore.ts';
 import { PromptRegistry } from '../prompt/PromptRegistry.ts';
 import { Scheduler } from '../scheduler/Scheduler.ts';
-import { EngineConfigSchema, type ValidatedEngineConfig } from '../config/schema.ts';
 import { GracefulShutdown } from './GracefulShutdown.ts';
 
 export interface EngineConfig {

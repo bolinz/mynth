@@ -76,11 +76,14 @@ describe('Orchestrator', () => {
   });
 
   it('should select first agent by explicit capability mapping', async () => {
-    const orchestrator = new Orchestrator(['ag-1', 'ag-2', 'ag-3'], [
-      { agentId: 'ag-1', capabilities: ['reasoning'] },
-      { agentId: 'ag-2', capabilities: ['codegen'] },
-      { agentId: 'ag-3', capabilities: ['review'] },
-    ]);
+    const orchestrator = new Orchestrator(
+      ['ag-1', 'ag-2', 'ag-3'],
+      [
+        { agentId: 'ag-1', capabilities: ['reasoning'] },
+        { agentId: 'ag-2', capabilities: ['codegen'] },
+        { agentId: 'ag-3', capabilities: ['review'] },
+      ],
+    );
     const analysis = await orchestrator.analyze({
       id: 't1',
       description: 'implement a function',
@@ -91,10 +94,13 @@ describe('Orchestrator', () => {
   });
 
   it('should select capability-specific agent when reasoning agent lacks it', async () => {
-    const orchestrator = new Orchestrator(['ag-1', 'ag-2'], [
-      { agentId: 'ag-1', capabilities: ['review'] },
-      { agentId: 'ag-2', capabilities: ['codegen'] },
-    ]);
+    const orchestrator = new Orchestrator(
+      ['ag-1', 'ag-2'],
+      [
+        { agentId: 'ag-1', capabilities: ['review'] },
+        { agentId: 'ag-2', capabilities: ['codegen'] },
+      ],
+    );
     const analysis = await orchestrator.analyze({
       id: 't1',
       description: 'implement a function',
@@ -106,10 +112,13 @@ describe('Orchestrator', () => {
   });
 
   it('should fallback to first agent when no capability match', async () => {
-    const orchestrator = new Orchestrator(['ag-1', 'ag-2'], [
-      { agentId: 'ag-1', capabilities: ['reasoning'] },
-      { agentId: 'ag-2', capabilities: ['codegen'] },
-    ]);
+    const orchestrator = new Orchestrator(
+      ['ag-1', 'ag-2'],
+      [
+        { agentId: 'ag-1', capabilities: ['reasoning'] },
+        { agentId: 'ag-2', capabilities: ['codegen'] },
+      ],
+    );
     const analysis = await orchestrator.analyze({
       id: 't1',
       description: 'do something unrelated',

@@ -29,7 +29,17 @@ describe('ChainTransferManager with CapabilityRouter', () => {
     llmPool.register('claude-sonnet', mockProvider);
     const router = new CapabilityRouter(llmPool);
 
-    const manager = new ChainTransferManager(pool, undefined, undefined, 10, undefined, llmPool, undefined, undefined, router);
+    const manager = new ChainTransferManager(
+      pool,
+      undefined,
+      undefined,
+      10,
+      undefined,
+      llmPool,
+      undefined,
+      undefined,
+      router,
+    );
     const result = await manager.startChain(ctx(), 'reasoner');
 
     expect(result.status).toBe('complete');
