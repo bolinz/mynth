@@ -72,17 +72,24 @@ export class ChainTransferManager {
 
       agent.startWork();
       const cap = agent.capabilities[0]?.type ?? 'reasoning';
-      await this.executeWithLLM(agent.id, this._taskContext?.description ?? '', cap);
+      const llmResult = await this.executeWithLLM(agent.id, this._taskContext?.description ?? '', cap);
+
+      agent.lastLlmOutput = llmResult ?? '';
 
       const hopStart = Date.now();
       const remaining = this.computeRemaining();
       const decision = agent.decideTransfer(remaining, this.pool);
       const duration = Date.now() - hopStart;
 
+      const llmSummary = agent.lastLlmOutput
+        ? agent.lastLlmOutput.slice(0, 200)
+        : '';
+      const note = decision.reason + (llmSummary ? ` | ${llmSummary}` : '');
+
       this.recordHop(
         agent.id,
         decision.action === 'complete' ? '' : (decision.nextAgent ?? ''),
-        decision.reason,
+        note,
         duration,
       );
 
@@ -211,10 +218,10 @@ export class ChainTransferManager {
     });
   }
 
-  private async executeWithLLM(agentId: string, task: string, capability: string): Promise<void> {
+  private async executeWithLLM(agentId: string, task: string, capability: string): Promise<string> {
     if (!this.llmPool) {
       await new Promise((r) => setTimeout(r, 20));
-      return;
+      return '';
     }
 
     try {
@@ -226,13 +233,15 @@ export class ChainTransferManager {
       const provider = this.llmPool.resolve({ model: modelName });
       const loop = new ReActLoop(provider);
       const prompt = this.promptRegistry?.buildPrompt(capability, task, '') ?? task;
-      await loop.execute(prompt, capability);
+      const result = await loop.execute(prompt, capability);
+      return result;
     } catch (err) {
       this.bus?.publish('anomaly.detected', {
         type: 'agent_error',
         agentId,
         details: { error: String(err) },
       });
+      return '';
     }
   }
 
