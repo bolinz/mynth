@@ -19,10 +19,17 @@ import type { Persistence } from '../persistence/Persistence.ts';
 import { StateStore } from '../persistence/StateStore.ts';
 import { PromptRegistry } from '../prompt/PromptRegistry.ts';
 import { Scheduler } from '../scheduler/Scheduler.ts';
+import { EngineConfigSchema, type ValidatedEngineConfig } from '../config/schema.ts';
 import { GracefulShutdown } from './GracefulShutdown.ts';
 
 export interface EngineConfig {
   dbPath: string;
+  maxHops?: number;
+  agents?: Array<{
+    id: string;
+    name: string;
+    capabilities: Array<{ type: string; level: number; confidence: number }>;
+  }>;
 }
 
 export interface TaskResult {
@@ -33,6 +40,7 @@ export interface TaskResult {
 
 export class CoreEngine {
   private running = false;
+  private parsedConfig!: ValidatedEngineConfig;
   private db!: Persistence;
   private pool!: AgentPool;
   private scheduler!: Scheduler;
@@ -57,6 +65,31 @@ export class CoreEngine {
   constructor(private config: EngineConfig) {}
 
   async start(): Promise<void> {
+    this.parsedConfig = EngineConfigSchema.parse({
+      dbPath: this.config.dbPath,
+      maxHops: this.config.maxHops ?? 10,
+      agents: this.config.agents ?? [
+        {
+          id: 'reasoner',
+          name: 'Reasoner',
+          transferPolicy: 'capability_match' as const,
+          capabilities: [{ type: 'reasoning' as const, level: 8, confidence: 0.9 }],
+        },
+        {
+          id: 'coder',
+          name: 'Coder',
+          transferPolicy: 'capability_match' as const,
+          capabilities: [{ type: 'codegen' as const, level: 8, confidence: 0.85 }],
+        },
+        {
+          id: 'reviewer',
+          name: 'Reviewer',
+          transferPolicy: 'capability_match' as const,
+          capabilities: [{ type: 'review' as const, level: 7, confidence: 0.8 }],
+        },
+      ],
+    });
+
     this.db = new LevelDBAdapter(this.config.dbPath);
     await this.db.open();
 
@@ -66,7 +99,7 @@ export class CoreEngine {
     this.pool.setBus(this.bus);
     this.memory = new GlobalMemory(this.db);
     this.scheduler = new Scheduler();
-    this.orchestrator = new Orchestrator(['reasoner', 'coder', 'reviewer']);
+    this.orchestrator = new Orchestrator(this.parsedConfig.agents.map((a) => a.id));
     this.observer = new Observer();
     this.guard = new Guard();
     this.intervener = new Intervener();
@@ -142,7 +175,7 @@ export class CoreEngine {
       this.pool,
       this.observer,
       this.intervener,
-      10,
+      this.parsedConfig.maxHops,
       this.bus as any,
       this.llmPool,
       this.promptRegistry,
@@ -176,29 +209,13 @@ export class CoreEngine {
   }
 
   private registerDefaultAgents(): void {
-    const configs = [
-      {
-        id: 'reasoner',
-        name: 'Reasoner',
-        capabilities: [
-          { type: 'reasoning' as const, level: 8, confidence: 0.9 },
-          { type: 'coordination' as const, level: 5, confidence: 0.7 },
-        ],
-      },
-      {
-        id: 'coder',
-        name: 'Coder',
-        capabilities: [{ type: 'codegen' as const, level: 8, confidence: 0.85 }],
-      },
-      {
-        id: 'reviewer',
-        name: 'Reviewer',
-        capabilities: [{ type: 'review' as const, level: 7, confidence: 0.8 }],
-      },
-    ];
-    for (const cfg of configs) {
+    for (const cfg of this.parsedConfig.agents) {
       this.pool.createAgent(cfg.id, cfg.name, cfg.capabilities);
-      this.stateStore.saveAgentConfig(cfg);
+      this.stateStore.saveAgentConfig({
+        id: cfg.id,
+        name: cfg.name,
+        capabilities: cfg.capabilities,
+      });
     }
   }
 }
