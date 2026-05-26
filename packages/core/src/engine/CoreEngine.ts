@@ -143,6 +143,7 @@ export class CoreEngine {
       this.bus as any,
       this.llmPool,
       this.promptRegistry,
+      this.budgetTracker,
     );
     const result = await chain.startChain(taskContext, analysis.firstAgent);
 

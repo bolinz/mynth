@@ -1,6 +1,7 @@
 import type { AgentId, Capability, CapabilityType, HopRecord, TaskContext } from '@mynth/sdk';
 import type { AgentPool } from '../agent/AgentPool.ts';
 import { ReActLoop } from '../agent/ReActLoop.ts';
+import type { BudgetTracker } from '../llm/BudgetTracker.ts';
 import type { LLMPool } from '../llm/LLMPool.ts';
 import type { MessageBus } from '../message-bus/MessageBus.ts';
 import type { InterventionAction } from '../meta/Intervener.ts';
@@ -32,6 +33,7 @@ export class ChainTransferManager {
     private bus?: MessageBus,
     private llmPool?: LLMPool,
     private promptRegistry?: PromptRegistry,
+    private budgetTracker?: BudgetTracker,
   ) {}
 
   async startChain(taskContext: TaskContext, firstAgentId: AgentId): Promise<TransferResult> {
@@ -224,6 +226,17 @@ export class ChainTransferManager {
       return '';
     }
 
+    if (this.budgetTracker) {
+      const check = this.budgetTracker.check(agentId, capability);
+      if (!check.allowed) {
+        this.bus?.publish('intervention.executed', {
+          type: 'warn',
+          reason: `Budget exceeded for ${agentId}: ${JSON.stringify(check.details)}`,
+        });
+        return '';
+      }
+    }
+
     try {
       const modelName = process.env.ANTHROPIC_API_KEY
         ? 'claude-sonnet'
@@ -234,6 +247,11 @@ export class ChainTransferManager {
       const loop = new ReActLoop(provider);
       const prompt = this.promptRegistry?.buildPrompt(capability, task, '') ?? task;
       const result = await loop.execute(prompt, capability);
+
+      if (this.budgetTracker) {
+        this.budgetTracker.record(agentId, capability, prompt.length, result.length);
+      }
+
       return result;
     } catch (err) {
       this.bus?.publish('anomaly.detected', {
