@@ -34,21 +34,21 @@ export class VectorStore {
 
   async addBatch(items: VectorItem[]): Promise<void> {
     for (const item of items) {
-      await this.add(item.id, item.vector, item.metadata);
+      if (item.vector.length !== this.dimension) {
+        throw new Error(
+          `Vector dimension mismatch: expected ${this.dimension}, got ${item.vector.length}`,
+        );
+      }
+      this.items.set(item.id, { id: item.id, vector: item.vector, metadata: item.metadata });
+    }
+    if (this.items.size >= this.rebuildThreshold) {
+      this.needsRebuild = true;
+      await this.rebuildIVF();
     }
   }
 
   async search(query: number[], topK: number): Promise<SearchResult[]> {
     if (this.items.size === 0) return [];
-
-    if (this.needsRebuild && this.items.size >= this.rebuildThreshold) {
-      const vecs = new Map<string, number[]>();
-      for (const [id, item] of this.items) {
-        vecs.set(id, item.vector);
-      }
-      this.ivf.train(vecs);
-      this.needsRebuild = false;
-    }
 
     if (this.items.size < this.rebuildThreshold) {
       return this.bruteForceSearch(query, topK);
@@ -73,6 +73,7 @@ export class VectorStore {
     this.items.set(id, { id, vector, metadata });
     if (this.items.size >= this.rebuildThreshold) {
       this.needsRebuild = true;
+      await this.rebuildIVF();
     }
   }
 
@@ -92,6 +93,15 @@ export class VectorStore {
 
   size(): number {
     return this.items.size;
+  }
+
+  private async rebuildIVF(): Promise<void> {
+    const vecs = new Map<string, number[]>();
+    for (const [id, item] of this.items) {
+      vecs.set(id, item.vector);
+    }
+    this.ivf.train(vecs);
+    this.needsRebuild = false;
   }
 
   private bruteForceSearch(query: number[], topK: number): SearchResult[] {

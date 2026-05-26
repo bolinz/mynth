@@ -25,7 +25,7 @@ describe('PrivateMemory', () => {
     const mem = new PrivateMemory('agent-1');
     await mem.remember('important', 'high', 0.9);
     await mem.remember('unimportant', 'low', 0.05);
-    const pruned = mem.prune(0.2);
+    const pruned = await mem.prune(0.2);
     expect(pruned).toBe(1);
     expect(await mem.recall('important')).toBe('high');
   });

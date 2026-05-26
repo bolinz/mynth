@@ -236,7 +236,6 @@ export class ChainTransferManager {
 
   private async executeWithLLM(agentId: string, task: string, capability: string): Promise<string> {
     if (!this.llmPool) {
-      await new Promise((r) => setTimeout(r, 20));
       return '';
     }
 
