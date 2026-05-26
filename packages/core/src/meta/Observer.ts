@@ -74,8 +74,20 @@ export class Observer {
 
   private detectCycle(): boolean {
     if (this.hopHistory.length < 4) return false;
-    const recent = this.hopHistory.slice(-4).map((h) => h.from);
-    return recent[0] === recent[2] && recent[1] === recent[3];
+
+    const fromAgents = this.hopHistory.map((h) => h.from);
+    const n = fromAgents.length;
+
+    // Check adjacent windows: if the last L hops repeat the preceding L hops
+    for (let l = 2; l <= Math.floor(n / 2); l++) {
+      const tail = fromAgents.slice(n - l);
+      const prev = fromAgents.slice(n - l * 2, n - l);
+      if (tail.length === prev.length && tail.every((v, i) => v === prev[i])) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   private averageDuration(): number {
