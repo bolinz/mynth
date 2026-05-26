@@ -166,8 +166,17 @@ export class ChainTransferManager {
           .getAllAgents()
           .filter((a) => a.id !== this._currentAgentId && a.state === 'idle');
         if (idleAgents.length === 0) return false;
-        this._currentAgentId = idleAgents[0].id;
-        idleAgents[0].assignTask(this._taskContext!);
+        const remaining = this.computeRemaining();
+        const capableAgent = remaining.length > 0
+          ? idleAgents.find((a) =>
+              remaining.every((r) =>
+                a.capabilities.some((c) => c.type === r.type && c.level >= r.level),
+              ),
+            )
+          : undefined;
+        const replacement = capableAgent ?? idleAgents[0];
+        this._currentAgentId = replacement.id;
+        replacement.assignTask(this._taskContext!);
         return true;
       }
 
