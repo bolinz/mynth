@@ -2,6 +2,7 @@ import { AgentPool } from '../agent/AgentPool.ts';
 import { ChainTransferManager } from '../chain/ChainTransferManager.ts';
 import { AnthropicProvider } from '../llm/AnthropicProvider.ts';
 import { BudgetTracker } from '../llm/BudgetTracker.ts';
+import { CapabilityRouter } from '../llm/CapabilityRouter.ts';
 import { LLMPool } from '../llm/LLMPool.ts';
 import { OpenAIProvider } from '../llm/OpenAIProvider.ts';
 import { RetryProvider } from '../llm/RetryProvider.ts';
@@ -44,6 +45,7 @@ export class CoreEngine {
   stateStore!: StateStore;
   llmPool!: LLMPool;
   budgetTracker!: BudgetTracker;
+  capabilityRouter!: CapabilityRouter;
   promptRegistry!: PromptRegistry;
   shutdown!: GracefulShutdown;
   degradation!: DegradationMonitor;
@@ -89,6 +91,7 @@ export class CoreEngine {
       this.llmPool.register('gpt-4o', retry);
     }
 
+    this.capabilityRouter = new CapabilityRouter(this.llmPool);
     this.shutdown = new GracefulShutdown(this.scheduler, this.memory, this.db, {
       drainTimeout: 10000,
     });
@@ -144,6 +147,7 @@ export class CoreEngine {
       this.llmPool,
       this.promptRegistry,
       this.budgetTracker,
+      this.capabilityRouter,
     );
     const result = await chain.startChain(taskContext, analysis.firstAgent);
 

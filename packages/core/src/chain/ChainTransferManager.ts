@@ -2,6 +2,7 @@ import type { AgentId, Capability, CapabilityType, HopRecord, TaskContext } from
 import type { AgentPool } from '../agent/AgentPool.ts';
 import { ReActLoop } from '../agent/ReActLoop.ts';
 import type { BudgetTracker } from '../llm/BudgetTracker.ts';
+import type { CapabilityRouter } from '../llm/CapabilityRouter.ts';
 import type { LLMPool } from '../llm/LLMPool.ts';
 import type { MessageBus } from '../message-bus/MessageBus.ts';
 import type { InterventionAction } from '../meta/Intervener.ts';
@@ -34,6 +35,7 @@ export class ChainTransferManager {
     private llmPool?: LLMPool,
     private promptRegistry?: PromptRegistry,
     private budgetTracker?: BudgetTracker,
+    private capabilityRouter?: CapabilityRouter,
   ) {}
 
   async startChain(taskContext: TaskContext, firstAgentId: AgentId): Promise<TransferResult> {
@@ -238,12 +240,21 @@ export class ChainTransferManager {
     }
 
     try {
-      const modelName = process.env.ANTHROPIC_API_KEY
-        ? 'claude-sonnet'
-        : process.env.OPENAI_API_KEY
-          ? 'gpt-4o'
-          : 'default';
-      const provider = this.llmPool.resolve({ model: modelName });
+      const resolvedProvider = this.capabilityRouter
+        ? this.capabilityRouter.resolve(capability)?.provider
+        : null;
+
+      const provider = resolvedProvider
+        ?? (process.env.ANTHROPIC_API_KEY
+          ? this.llmPool.resolve({ model: 'claude-sonnet' })
+          : process.env.OPENAI_API_KEY
+            ? this.llmPool.resolve({ model: 'gpt-4o' })
+            : null);
+
+      if (!provider) {
+        await new Promise((r) => setTimeout(r, 20));
+        return '';
+      }
       const loop = new ReActLoop(provider);
       const prompt = this.promptRegistry?.buildPrompt(capability, task, '') ?? task;
       const result = await loop.execute(prompt, capability);
