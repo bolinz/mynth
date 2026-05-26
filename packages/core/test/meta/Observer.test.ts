@@ -55,6 +55,40 @@ describe('Observer', () => {
     const anomalies = obs.detectAnomalies();
     expect(anomalies.some((a) => a.type === 'agent_error' && a.agentId === 'bad-agent')).toBe(true);
   });
+
+  it('should detect longer cycle pattern (A-B-C-A-B-C)', () => {
+    const obs = new Observer();
+    obs.recordHop('a', 'b', 50);
+    obs.recordHop('b', 'c', 50);
+    obs.recordHop('c', 'a', 50);
+    obs.recordHop('a', 'b', 50);
+    obs.recordHop('b', 'c', 50);
+    obs.recordHop('c', 'a', 50);
+    const anomalies = obs.detectAnomalies();
+    expect(anomalies.some((a) => a.type === 'cycle_pattern')).toBe(true);
+  });
+
+  it('should detect simple back-and-forth cycle', () => {
+    const obs = new Observer();
+    obs.recordHop('a', 'b', 50);
+    obs.recordHop('b', 'a', 50);
+    obs.recordHop('a', 'b', 50);
+    obs.recordHop('b', 'a', 50);
+    const anomalies = obs.detectAnomalies();
+    expect(anomalies.some((a) => a.type === 'cycle_pattern')).toBe(true);
+  });
+
+  it('should not false-positive on normal sequential hops', () => {
+    const obs = new Observer();
+    obs.recordHop('a', 'b', 50);
+    obs.recordHop('b', 'c', 50);
+    obs.recordHop('c', 'd', 50);
+    obs.recordHop('d', 'e', 50);
+    obs.recordHop('e', 'f', 50);
+    obs.recordHop('f', 'g', 50);
+    const anomalies = obs.detectAnomalies();
+    expect(anomalies.some((a) => a.type === 'cycle_pattern')).toBe(false);
+  });
 });
 
 describe('ChainTransferManager intervention integration', () => {

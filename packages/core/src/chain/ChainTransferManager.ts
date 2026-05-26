@@ -1,6 +1,8 @@
 import type { AgentId, Capability, CapabilityType, HopRecord, TaskContext } from '@mynth/sdk';
 import type { AgentPool } from '../agent/AgentPool.ts';
 import { ReActLoop } from '../agent/ReActLoop.ts';
+import type { BudgetTracker } from '../llm/BudgetTracker.ts';
+import type { CapabilityRouter } from '../llm/CapabilityRouter.ts';
 import type { LLMPool } from '../llm/LLMPool.ts';
 import type { MessageBus } from '../message-bus/MessageBus.ts';
 import type { InterventionAction } from '../meta/Intervener.ts';
@@ -32,6 +34,8 @@ export class ChainTransferManager {
     private bus?: MessageBus,
     private llmPool?: LLMPool,
     private promptRegistry?: PromptRegistry,
+    private budgetTracker?: BudgetTracker,
+    private capabilityRouter?: CapabilityRouter,
   ) {}
 
   async startChain(taskContext: TaskContext, firstAgentId: AgentId): Promise<TransferResult> {
@@ -72,17 +76,26 @@ export class ChainTransferManager {
 
       agent.startWork();
       const cap = agent.capabilities[0]?.type ?? 'reasoning';
-      await this.executeWithLLM(agent.id, this._taskContext?.description ?? '', cap);
+      const llmResult = await this.executeWithLLM(
+        agent.id,
+        this._taskContext?.description ?? '',
+        cap,
+      );
+
+      agent.lastLlmOutput = llmResult ?? '';
 
       const hopStart = Date.now();
       const remaining = this.computeRemaining();
       const decision = agent.decideTransfer(remaining, this.pool);
       const duration = Date.now() - hopStart;
 
+      const llmSummary = agent.lastLlmOutput ? agent.lastLlmOutput.slice(0, 200) : '';
+      const note = decision.reason + (llmSummary ? ` | ${llmSummary}` : '');
+
       this.recordHop(
         agent.id,
         decision.action === 'complete' ? '' : (decision.nextAgent ?? ''),
-        decision.reason,
+        note,
         duration,
       );
 
@@ -155,8 +168,18 @@ export class ChainTransferManager {
           .getAllAgents()
           .filter((a) => a.id !== this._currentAgentId && a.state === 'idle');
         if (idleAgents.length === 0) return false;
-        this._currentAgentId = idleAgents[0].id;
-        idleAgents[0].assignTask(this._taskContext!);
+        const remaining = this.computeRemaining();
+        const capableAgent =
+          remaining.length > 0
+            ? idleAgents.find((a) =>
+                remaining.every((r) =>
+                  a.capabilities.some((c) => c.type === r.type && c.level >= r.level),
+                ),
+              )
+            : undefined;
+        const replacement = capableAgent ?? idleAgents[0];
+        this._currentAgentId = replacement.id;
+        replacement.assignTask(this._taskContext!);
         return true;
       }
 
@@ -211,28 +234,56 @@ export class ChainTransferManager {
     });
   }
 
-  private async executeWithLLM(agentId: string, task: string, capability: string): Promise<void> {
+  private async executeWithLLM(agentId: string, task: string, capability: string): Promise<string> {
     if (!this.llmPool) {
       await new Promise((r) => setTimeout(r, 20));
-      return;
+      return '';
+    }
+
+    if (this.budgetTracker) {
+      const check = this.budgetTracker.check(agentId, capability);
+      if (!check.allowed) {
+        this.bus?.publish('intervention.executed', {
+          type: 'warn',
+          reason: `Budget exceeded for ${agentId}: ${JSON.stringify(check.details)}`,
+        });
+        return '';
+      }
     }
 
     try {
-      const modelName = process.env.ANTHROPIC_API_KEY
-        ? 'claude-sonnet'
-        : process.env.OPENAI_API_KEY
-          ? 'gpt-4o'
-          : 'default';
-      const provider = this.llmPool.resolve({ model: modelName });
+      const resolvedProvider = this.capabilityRouter
+        ? this.capabilityRouter.resolve(capability)?.provider
+        : null;
+
+      const provider =
+        resolvedProvider ??
+        (process.env.ANTHROPIC_API_KEY
+          ? this.llmPool.resolve({ model: 'claude-sonnet' })
+          : process.env.OPENAI_API_KEY
+            ? this.llmPool.resolve({ model: 'gpt-4o' })
+            : null);
+
+      if (!provider) {
+        await new Promise((r) => setTimeout(r, 20));
+        return '';
+      }
       const loop = new ReActLoop(provider);
       const prompt = this.promptRegistry?.buildPrompt(capability, task, '') ?? task;
-      await loop.execute(prompt, capability);
+      const result = await loop.execute(prompt, capability);
+
+      if (this.budgetTracker) {
+        this.budgetTracker.record(agentId, capability, prompt.length, result.length);
+      }
+
+      return result;
     } catch (err) {
       this.bus?.publish('anomaly.detected', {
         type: 'agent_error',
         agentId,
         details: { error: String(err) },
       });
+      return '';
     }
   }
 

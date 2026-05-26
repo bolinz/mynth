@@ -11,6 +11,7 @@ export class BaseAgent {
   readonly metadata: AgentMetadata;
   protected stateMachine = new AgentStateMachine();
   lastError: Error | null = null;
+  lastLlmOutput = '';
   onStateChange?: (state: AgentState) => void;
 
   private _taskCount = 0;
