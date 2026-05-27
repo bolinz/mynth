@@ -1,4 +1,5 @@
 import type { Persistence } from '../persistence/Persistence.ts';
+import type { GlobalMemory } from './GlobalMemory.ts';
 
 export interface MemoryItem {
   key: string;
@@ -83,5 +84,36 @@ export class PrivateMemory {
 
   size(): number {
     return this.l1.size;
+  }
+
+  async backup(globalMemory: GlobalMemory, namespace?: string): Promise<void> {
+    const prefix = `mem:${this.agentId}:${namespace ? namespace + ':' : ''}`;
+    const keys: Record<string, boolean> = {};
+    for (const [key, item] of this.l1) {
+      await globalMemory.write(`${prefix}${key}`, item.value);
+      keys[key] = true;
+    }
+    await globalMemory.write(`${prefix}__snapshot__`, keys);
+  }
+
+  async restore(globalMemory: GlobalMemory, namespace?: string): Promise<number> {
+    const prefix = `mem:${this.agentId}:${namespace ? namespace + ':' : ''}`;
+    let restored = 0;
+    if (this.persistence) {
+      const raw = await this.persistence.range(`mem:${this.agentId}:`, `mem:${this.agentId}~`);
+      if (raw.length > 0) return 0;
+    }
+    const snapshot = await globalMemory.read(`${prefix}__snapshot__`);
+    if (snapshot && typeof snapshot === 'object') {
+      const keys = snapshot as Record<string, unknown>;
+      for (const key of Object.keys(keys)) {
+        const val = await globalMemory.read(`${prefix}${key}`);
+        if (val !== null) {
+          await this.remember(key, val);
+          restored++;
+        }
+      }
+    }
+    return restored;
   }
 }
