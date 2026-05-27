@@ -9,7 +9,8 @@ export type EventTopic =
   | 'intervention.executed'
   | 'hitl.requested'
   | 'hitl.resolved'
-  | 'system.degradation_changed';
+  | 'system.degradation_changed'
+  | 'agent.response';
 
 export interface AgentStateChangedEvent {
   agentId: string;
@@ -73,6 +74,14 @@ export interface HITLResolvedEvent {
   decidedBy?: string;
 }
 
+export interface AgentResponseEvent {
+  taskId: string;
+  agentId: string;
+  text: string;
+  viewCount: number;
+  hasInteraction: boolean;
+}
+
 export interface DegradationChangedEvent {
   level: number;
   dimensions: Record<string, { health: string; reason?: string }>;
@@ -89,7 +98,8 @@ export type EventPayload =
   | InterventionExecutedEvent
   | HITLRequestedEvent
   | HITLResolvedEvent
-  | DegradationChangedEvent;
+  | DegradationChangedEvent
+  | AgentResponseEvent;
 
 export type EventHandler = (topic: EventTopic, payload: EventPayload) => void;
 
