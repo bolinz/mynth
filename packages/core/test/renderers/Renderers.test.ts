@@ -1,16 +1,22 @@
 import { describe, expect, it } from 'vitest';
+import { cardsRenderer } from '../../src/renderers/cards.ts';
 import { markdownRenderer } from '../../src/renderers/markdown.ts';
 import { tableRenderer } from '../../src/renderers/table.ts';
-import { cardsRenderer } from '../../src/renderers/cards.ts';
 
 describe('markdownRenderer', () => {
   it('should render markdown text', () => {
-    const result = markdownRenderer.renderWeb({ type: 'markdown', data: { text: 'Hello **world**' } });
+    const result = markdownRenderer.renderWeb({
+      type: 'markdown',
+      data: { text: 'Hello **world**' },
+    });
     expect(result).toContain('Hello');
   });
 
   it('should escape HTML in markdown', () => {
-    const result = markdownRenderer.renderWeb({ type: 'markdown', data: { text: '<script>alert(1)</script>' } });
+    const result = markdownRenderer.renderWeb({
+      type: 'markdown',
+      data: { text: '<script>alert(1)</script>' },
+    });
     expect(result).not.toContain('<script>');
     expect(result).toContain('&lt;script&gt;');
   });
@@ -24,7 +30,13 @@ describe('markdownRenderer', () => {
 describe('tableRenderer', () => {
   const view = {
     type: 'table' as const,
-    data: { headers: ['Name', 'Value'], rows: [['a', '1'], ['b', '2']] },
+    data: {
+      headers: ['Name', 'Value'],
+      rows: [
+        ['a', '1'],
+        ['b', '2'],
+      ],
+    },
   };
 
   it('should render web table', () => {
