@@ -79,7 +79,8 @@ describe('HITLManager', () => {
 
     const mgr = new HITLManager(db);
     const req = await mgr.submit({
-      agentId: 'agent-1', taskId: 't1',
+      agentId: 'agent-1',
+      taskId: 't1',
       operation: { type: 'config.modify', target: 'budget', summary: 'test' },
       triggeredBy: 'guard_rule',
     });
@@ -108,12 +109,14 @@ describe('HITLManager', () => {
 
     const mgr = new HITLManager(db);
     await mgr.submit({
-      agentId: 'a', taskId: 't1',
+      agentId: 'a',
+      taskId: 't1',
       operation: { type: 'budget.override', target: 'x', summary: 'x' },
       triggeredBy: 'guard_rule',
     });
     await mgr.submit({
-      agentId: 'b', taskId: 't2',
+      agentId: 'b',
+      taskId: 't2',
       operation: { type: 'config.modify', target: 'y', summary: 'y' },
       triggeredBy: 'guard_rule',
     });

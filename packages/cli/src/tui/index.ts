@@ -155,9 +155,11 @@ export async function startTui(engine: CoreEngine): Promise<void> {
     }
     approvalPanel.show();
     const lines = pending.map((req) => {
-      return `  {bold}${req.id}{/}\n` +
+      return (
+        `  {bold}${req.id}{/}\n` +
         `    Agent: ${req.agentId}  |  Type: {yellow-fg}${req.operation.type}{/}\n` +
-        `    {white-fg}${req.operation.summary}{/}\n`;
+        `    {white-fg}${req.operation.summary}{/}\n`
+      );
     });
     approvalPanel.setContent('\n' + lines.join('\n'));
     screen.render();

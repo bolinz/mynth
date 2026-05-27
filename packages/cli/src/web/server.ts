@@ -111,7 +111,9 @@ export function startWebServer(engine: CoreEngine, port = 3000): void {
 
     if (url.pathname === '/approve' && req.method === 'POST') {
       let body = '';
-      req.on('data', (chunk) => { body += chunk; });
+      req.on('data', (chunk) => {
+        body += chunk;
+      });
       req.on('end', async () => {
         try {
           const { id, action, note } = JSON.parse(body);

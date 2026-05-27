@@ -104,11 +104,7 @@ export class Guard {
     });
   }
 
-  checkOperation(
-    agentId: string,
-    taskId: string,
-    operation: HITLOperation,
-  ): OperationCheck {
+  checkOperation(agentId: string, taskId: string, operation: HITLOperation): OperationCheck {
     const role = this.agentRoles.get(agentId) ?? 'viewer';
 
     if (operation.type === 'budget.override' && role !== 'admin') {

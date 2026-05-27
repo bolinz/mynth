@@ -3,15 +3,15 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { CoreEngine } from '@mynth/core';
 import { cac } from 'cac';
+import { approveCommand } from './commands/approve.ts';
 import { historyCommand } from './commands/history.ts';
 import { initCommand } from './commands/init.ts';
 import { listCommand } from './commands/list.ts';
 import { logsCommand } from './commands/logs.ts';
+import { pendingCommand } from './commands/pending.ts';
 import { runCommand } from './commands/run.ts';
 import { statusCommand } from './commands/status.ts';
 import { stopCommand } from './commands/stop.ts';
-import { pendingCommand } from './commands/pending.ts';
-import { approveCommand } from './commands/approve.ts';
 import { startTui } from './tui/index.ts';
 import { startWebServer } from './web/server.ts';
 

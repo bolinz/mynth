@@ -30,7 +30,9 @@ export class HITLManager {
     this.eventBus = eventBus;
   }
 
-  async submit(data: Omit<HITLRequest, 'id' | 'status' | 'createdAt' | 'decidedAt' | 'decidedBy'>): Promise<HITLRequest> {
+  async submit(
+    data: Omit<HITLRequest, 'id' | 'status' | 'createdAt' | 'decidedAt' | 'decidedBy'>,
+  ): Promise<HITLRequest> {
     const request: HITLRequest = {
       ...data,
       id: `hitl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
