@@ -6,7 +6,9 @@ export type EventTopic =
   | 'transfer.completed'
   | 'hop.recorded'
   | 'anomaly.detected'
-  | 'intervention.executed';
+  | 'intervention.executed'
+  | 'hitl.requested'
+  | 'hitl.resolved';
 
 export interface AgentStateChangedEvent {
   agentId: string;
@@ -56,6 +58,20 @@ export interface InterventionExecutedEvent {
   reason?: string;
 }
 
+export interface HITLRequestedEvent {
+  requestId: string;
+  agentId: string;
+  operation: string;
+  summary: string;
+  createdAt: number;
+}
+
+export interface HITLResolvedEvent {
+  requestId: string;
+  status: string;
+  decidedBy?: string;
+}
+
 export type EventPayload =
   | AgentStateChangedEvent
   | TaskSubmittedEvent
@@ -64,7 +80,9 @@ export type EventPayload =
   | TransferCompletedEvent
   | HopRecordedEvent
   | AnomalyDetectedEvent
-  | InterventionExecutedEvent;
+  | InterventionExecutedEvent
+  | HITLRequestedEvent
+  | HITLResolvedEvent;
 
 export type EventHandler = (topic: EventTopic, payload: EventPayload) => void;
 

@@ -1,3 +1,4 @@
+import type { EventBus } from '../message-bus/EventBus.ts';
 import type { Persistence } from '../persistence/Persistence.ts';
 
 export interface HITLOperation {
@@ -22,9 +23,11 @@ export interface HITLRequest {
 export class HITLManager {
   private requests = new Map<string, HITLRequest>();
   private persistence?: Persistence;
+  private eventBus?: EventBus;
 
-  constructor(persistence?: Persistence) {
+  constructor(persistence?: Persistence, eventBus?: EventBus) {
     this.persistence = persistence;
+    this.eventBus = eventBus;
   }
 
   async submit(data: Omit<HITLRequest, 'id' | 'status' | 'createdAt' | 'decidedAt' | 'decidedBy'>): Promise<HITLRequest> {
@@ -38,6 +41,13 @@ export class HITLManager {
     if (this.persistence) {
       await this.persistence.put(`hitl:${request.id}`, request);
     }
+    this.eventBus?.publish('hitl.requested', {
+      requestId: request.id,
+      agentId: request.agentId,
+      operation: request.operation.type,
+      summary: request.operation.summary,
+      createdAt: request.createdAt,
+    });
     return request;
   }
 
@@ -51,6 +61,11 @@ export class HITLManager {
     if (this.persistence) {
       await this.persistence.put(`hitl:${id}`, req);
     }
+    this.eventBus?.publish('hitl.resolved', {
+      requestId: id,
+      status: 'approved',
+      decidedBy: by,
+    });
     return true;
   }
 
@@ -64,6 +79,11 @@ export class HITLManager {
     if (this.persistence) {
       await this.persistence.put(`hitl:${id}`, req);
     }
+    this.eventBus?.publish('hitl.resolved', {
+      requestId: id,
+      status: 'rejected',
+      decidedBy: by,
+    });
     return true;
   }
 
