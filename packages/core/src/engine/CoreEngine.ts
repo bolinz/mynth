@@ -12,6 +12,7 @@ import type { EventBus } from '../message-bus/EventBus.ts';
 import { MessageBus } from '../message-bus/MessageBus.ts';
 import { DegradationMonitor } from '../meta/DegradationMonitor.ts';
 import { Guard } from '../meta/Guard.ts';
+import { HITLManager } from '../meta/HITLManager.ts';
 import { Intervener } from '../meta/Intervener.ts';
 import { Observer } from '../meta/Observer.ts';
 import { Orchestrator } from '../meta/Orchestrator.ts';
@@ -57,6 +58,7 @@ export class CoreEngine {
   promptRegistry!: PromptRegistry;
   shutdown!: GracefulShutdown;
   degradation!: DegradationMonitor;
+  hitlManager!: HITLManager;
 
   get eventBus(): EventBus {
     return this.bus as unknown as EventBus;
@@ -109,6 +111,8 @@ export class CoreEngine {
     this.observer = new Observer();
     this.guard = new Guard();
     this.intervener = new Intervener();
+    this.hitlManager = new HITLManager(this.db, this.eventBus);
+    await this.hitlManager.loadAll();
 
     // LLM infrastructure
     this.llmPool = new LLMPool();
