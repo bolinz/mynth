@@ -19,6 +19,7 @@ import { Intervener } from '../meta/Intervener.ts';
 import { Observer } from '../meta/Observer.ts';
 import { Orchestrator } from '../meta/Orchestrator.ts';
 import { RendererRegistry } from '../meta/ViewRenderer.ts';
+import { markdownRenderer, tableRenderer, diffRenderer, flowchartRenderer, chartRenderer, cardsRenderer, rawHtmlRenderer } from '../renderers/index.ts';
 import { Tracer } from '../meta/Tracer.ts';
 import { LevelDBAdapter } from '../persistence/LevelDBAdapter.ts';
 import type { Persistence } from '../persistence/Persistence.ts';
@@ -146,6 +147,13 @@ export class CoreEngine {
     this.capabilityRouter = new CapabilityRouter(this.llmPool);
     this.tracer = new Tracer();
     this.rendererRegistry = new RendererRegistry();
+    this.rendererRegistry.register(markdownRenderer);
+    this.rendererRegistry.register(tableRenderer);
+    this.rendererRegistry.register(diffRenderer);
+    this.rendererRegistry.register(flowchartRenderer);
+    this.rendererRegistry.register(chartRenderer);
+    this.rendererRegistry.register(cardsRenderer);
+    this.rendererRegistry.register(rawHtmlRenderer);
     this.interactionManager = new InteractionManager();
     this.shutdown = new GracefulShutdown(this.scheduler, this.memory, this.db, {
       drainTimeout: 10000,
