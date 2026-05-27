@@ -44,6 +44,10 @@ export interface Checkpoint {
   context: TaskContext;
 }
 
+export interface TenantContext {
+  tenantId: string;
+}
+
 export interface HandoverConstraints {
   requiredCapabilities: Capability[];
   forbiddenAgents: AgentId[];

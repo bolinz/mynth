@@ -14,6 +14,7 @@ export type {
   HopRecord,
   Checkpoint,
   HandoverConstraints,
+  TenantContext,
 } from './task.ts';
 
 export type {
