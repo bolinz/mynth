@@ -63,6 +63,7 @@ export class CoreEngine {
   degradation!: DegradationMonitor;
   hitlManager!: HITLManager;
   tracer!: Tracer;
+  private evictTimer?: ReturnType<typeof setInterval>;
 
   get eventBus(): EventBus {
     return this.bus as unknown as EventBus;
