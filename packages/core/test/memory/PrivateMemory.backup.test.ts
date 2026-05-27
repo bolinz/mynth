@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { PrivateMemory } from '../../src/memory/PrivateMemory.ts';
 import { GlobalMemory } from '../../src/memory/GlobalMemory.ts';
+import { PrivateMemory } from '../../src/memory/PrivateMemory.ts';
 
 describe('PrivateMemory L3 backup', () => {
   it('should backup and restore from GlobalMemory', async () => {

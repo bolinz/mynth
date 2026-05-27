@@ -1,7 +1,7 @@
-import { BaseAgent } from './BaseAgent.ts';
-import { WarmPool } from './WarmPool.ts';
 import type { Capability, CapabilityType } from '@mynth/sdk';
 import type { EventBus } from '../message-bus/EventBus.ts';
+import type { BaseAgent } from './BaseAgent.ts';
+import { WarmPool } from './WarmPool.ts';
 
 export class AgentPool {
   private warm = new WarmPool();
