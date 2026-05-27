@@ -409,7 +409,11 @@ export async function startTui(engine: CoreEngine): Promise<void> {
             '  {bold}/status{/}        Show agent pool\n' +
             '  {bold}/list{/}          List tasks\n' +
             '  {bold}/logs <id>{/}     View task hops\n' +
-            '  {bold}/help{/}          This message\n\n' +
+            '  {bold}/approve <id>{/}  Approve pending request\n' +
+            '  {bold}/reject <id>{/}   Reject pending request\n' +
+            '  {bold}/pending{/}       List pending approvals\n' +
+            '  {bold}/help{/}          This message\n' +
+            '  {yellow-fg}Key: a{/} approve first  {yellow-fg}r{/} reject first\n\n' +
             '  {bold}<any text>{/}      Run a task through the chain',
         );
         break;
@@ -425,6 +429,25 @@ export async function startTui(engine: CoreEngine): Promise<void> {
     input.show();
     screen.render();
   }
+
+  // Approval panel keyboard shortcuts
+  screen.key(['a'], () => {
+    const pending = engine.hitlManager.getPending();
+    if (pending.length === 0) return;
+    engine.hitlManager.approve(pending[0].id, 'tui');
+    log('\u2713', `Approved: {green-fg}${pending[0].id}{/}`, '{green-fg}');
+    updateApprovalPanel();
+    updateStats();
+  });
+
+  screen.key(['r'], () => {
+    const pending = engine.hitlManager.getPending();
+    if (pending.length === 0) return;
+    engine.hitlManager.reject(pending[0].id, 'tui');
+    log('\u2717', `Rejected: {yellow-fg}${pending[0].id}{/}`, '{yellow-fg}');
+    updateApprovalPanel();
+    updateStats();
+  });
 
   // Command history navigation with ↑/↓
   input.key(['up', 'down'], (ch: any, key: { name: string }) => {

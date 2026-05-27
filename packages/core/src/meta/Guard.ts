@@ -134,6 +134,15 @@ export class Guard {
       };
     }
 
+    if (operation.type === 'chain.transfer' && role !== 'admin') {
+      return {
+        allowed: false,
+        needsApproval: true,
+        reason: 'chain transfer requires approval',
+        requestData: { agentId, taskId, operation, triggeredBy: 'guard_rule' },
+      };
+    }
+
     return { allowed: true, needsApproval: false };
   }
 
