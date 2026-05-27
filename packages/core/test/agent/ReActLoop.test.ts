@@ -13,8 +13,8 @@ describe('ReActLoop', () => {
       completeStream: vi.fn() as any,
     };
     const loop = new ReActLoop(mockLLM);
-    const result = await loop.execute('What is 6 * 7?', 'reasoning');
-    expect(result).toContain('42');
+    const agentResponse = await loop.execute('What is 6 * 7?', 'reasoning');
+    expect(agentResponse.text).toContain('42');
   });
 
   it('should respect max iterations', async () => {
@@ -27,7 +27,7 @@ describe('ReActLoop', () => {
       completeStream: vi.fn() as any,
     };
     const loop = new ReActLoop(mockLLM, 3);
-    const result = await loop.execute('complex question', 'reasoning');
-    expect(result).toContain('max iterations');
+    const agentResponse = await loop.execute('complex question', 'reasoning');
+    expect(agentResponse.text).toContain('max iterations');
   });
 });

@@ -295,7 +295,17 @@ export class ChainTransferManager {
       }
       const loop = new ReActLoop(provider);
       const prompt = this.promptRegistry?.buildStructuredPrompt(capability, task, '') ?? task;
-      const result = await loop.execute(prompt, capability);
+      const agentResponse = await loop.execute(prompt, capability);
+      const result = agentResponse.text;
+
+      // Publish agent response event for UI rendering
+      this.bus?.publish('agent.response', {
+        taskId: this._taskContext?.taskId ?? '',
+        agentId,
+        text: agentResponse.text,
+        viewCount: agentResponse.views.length,
+        hasInteraction: !!agentResponse.interaction,
+      });
 
       // Structured output validation
       const schema = this.promptRegistry?.getSchema(capability);

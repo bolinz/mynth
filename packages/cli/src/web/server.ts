@@ -20,6 +20,7 @@ export function startWebServer(engine: CoreEngine, port = 3000): void {
     'hitl.requested',
     'hitl.resolved',
     'system.degradation_changed',
+    'agent.response',
   ] as const;
 
   const unsubs = topics.map((topic) =>
@@ -135,6 +136,50 @@ export function startWebServer(engine: CoreEngine, port = 3000): void {
           }
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: true }));
+        } catch (err) {
+          res.writeHead(500);
+          res.end(JSON.stringify({ error: String(err) }));
+        }
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/views' && req.method === 'POST') {
+      let body = '';
+      req.on('data', (chunk) => {
+        body += chunk;
+      });
+      req.on('end', async () => {
+        try {
+          const { type, data } = JSON.parse(body);
+          const renderer = engine.rendererRegistry.get(type);
+          if (!renderer) {
+            res.writeHead(404);
+            res.end(JSON.stringify({ error: `Unknown view type: ${type}` }));
+            return;
+          }
+          const html = renderer.renderWeb({ type, data });
+          res.writeHead(200, { 'Content-Type': 'text/html' });
+          res.end(html);
+        } catch (err) {
+          res.writeHead(500);
+          res.end(JSON.stringify({ error: String(err) }));
+        }
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/interaction' && req.method === 'POST') {
+      let body = '';
+      req.on('data', (chunk) => {
+        body += chunk;
+      });
+      req.on('end', () => {
+        try {
+          const { interactionId, value } = JSON.parse(body);
+          const result = engine.interactionManager.respond(interactionId, value);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: !!result }));
         } catch (err) {
           res.writeHead(500);
           res.end(JSON.stringify({ error: String(err) }));

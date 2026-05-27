@@ -14,14 +14,25 @@ import { MessageBus } from '../message-bus/MessageBus.ts';
 import { DegradationMonitor } from '../meta/DegradationMonitor.ts';
 import { Guard } from '../meta/Guard.ts';
 import { HITLManager } from '../meta/HITLManager.ts';
+import { InteractionManager } from '../meta/InteractionManager.ts';
 import { Intervener } from '../meta/Intervener.ts';
 import { Observer } from '../meta/Observer.ts';
 import { Orchestrator } from '../meta/Orchestrator.ts';
 import { Tracer } from '../meta/Tracer.ts';
+import { RendererRegistry } from '../meta/ViewRenderer.ts';
 import { LevelDBAdapter } from '../persistence/LevelDBAdapter.ts';
 import type { Persistence } from '../persistence/Persistence.ts';
 import { StateStore } from '../persistence/StateStore.ts';
 import { PromptRegistry } from '../prompt/PromptRegistry.ts';
+import {
+  cardsRenderer,
+  chartRenderer,
+  diffRenderer,
+  flowchartRenderer,
+  markdownRenderer,
+  rawHtmlRenderer,
+  tableRenderer,
+} from '../renderers/index.ts';
 import { Scheduler } from '../scheduler/Scheduler.ts';
 import { GracefulShutdown } from './GracefulShutdown.ts';
 
@@ -63,6 +74,8 @@ export class CoreEngine {
   degradation!: DegradationMonitor;
   hitlManager!: HITLManager;
   tracer!: Tracer;
+  rendererRegistry!: RendererRegistry;
+  interactionManager!: InteractionManager;
   private evictTimer?: ReturnType<typeof setInterval>;
 
   get eventBus(): EventBus {
@@ -122,7 +135,7 @@ export class CoreEngine {
     // LLM infrastructure
     this.llmPool = new LLMPool();
     this.budgetTracker = new BudgetTracker();
-    this.promptRegistry = new PromptRegistry();
+    this.promptRegistry = new PromptRegistry(this.rendererRegistry);
 
     if (process.env.ANTHROPIC_API_KEY) {
       const anthropic = new AnthropicProvider(
@@ -141,6 +154,15 @@ export class CoreEngine {
 
     this.capabilityRouter = new CapabilityRouter(this.llmPool);
     this.tracer = new Tracer();
+    this.rendererRegistry = new RendererRegistry();
+    this.rendererRegistry.register(markdownRenderer);
+    this.rendererRegistry.register(tableRenderer);
+    this.rendererRegistry.register(diffRenderer);
+    this.rendererRegistry.register(flowchartRenderer);
+    this.rendererRegistry.register(chartRenderer);
+    this.rendererRegistry.register(cardsRenderer);
+    this.rendererRegistry.register(rawHtmlRenderer);
+    this.interactionManager = new InteractionManager();
     this.shutdown = new GracefulShutdown(this.scheduler, this.memory, this.db, {
       drainTimeout: 10000,
     });

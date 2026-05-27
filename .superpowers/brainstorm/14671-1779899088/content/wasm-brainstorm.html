@@ -1,0 +1,160 @@
+<style>
+  h2 { margin: 20px 0 8px; }
+  .subtitle { margin-bottom: 20px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .card { background: #1e1e1e; padding: 16px; border-radius: 8px; margin-bottom: 16px; }
+  .card h3 { margin: 0 0 8px; }
+  .tag { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+  .tag-feasible { background: #065f46; color: #6ee7b7; }
+  .tag-hard { background: #7c2d12; color: #fdba74; }
+  .tag-light { background: #1e3a5f; color: #93c5fd; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #333; }
+  th { background: #2d2d2d; }
+</style>
+
+<h2>WASM + HTML 头脑风暴</h2>
+<p class="subtitle">探索 WASM 在 Agent 富内容交互中的角色和可能性</p>
+
+<h3>场景：WASM 作为交互层</h3>
+
+<div class="card">
+  <h3>方案 A：WASM 安全网关</h3>
+  <p><span class="tag tag-feasible">可行</span> <span class="tag tag-light">推荐探索</span></p>
+  <pre style="font-size:13px;line-height:1.5">
+LLM → HTML → WASM 安全网关 → 安全 HTML → iframe render
+                            ↓
+                     解析 DOM，移除危险属性
+                     重写 data-action 绑定
+                     注入白名单校验
+                     输出纯净 HTML + 交互契约
+  </pre>
+  <p>WASM 在这里类似 DOMPurify 但更彻底：<br>
+  - 编译期保证：输入输出类型严格，无 JS 逃逸路径<br>
+  - 确定性：相同 HTML 永远产出相同安全结果<br>
+  - DOM 解析在 WASM 内完成，不依赖浏览器 DOM parser<br>
+  - 缺陷：WASM 解析 HTML 需要自带 parser（复杂度高）</p>
+</div>
+
+<div class="card">
+  <h3>方案 B：WASM 全栈渲染（HTML+Canvas）</h3>
+  <p><span class="tag tag-hard">高复杂度</span></p>
+  <pre style="font-size:13px;line-height:1.5">
+LLM → HTML → WASM 渲染器 → Canvas 输出
+                            ↓
+                     WASM 管理热区
+                     点击热区 → postMessage
+                     不涉及 DOM
+  </pre>
+  <p>优势：完全无 DOM 注入风险，像素级控制<br>
+  代价：<br>
+  - 需要实现 HTML→Canvas 的布局引擎（工作量巨大）<br>
+  - 文本渲染、换行、可访问性全部自建<br>
+  - 交互热区需 WASM 维护 → 增加复杂度<br>
+  - 不适合初期版本</p>
+</div>
+
+<div class="card">
+  <h3>方案 C：WASM DSL 渲染器</h3>
+  <p><span class="tag tag-hard">高复杂度</span> <span class="tag tag-light">中长期</span></p>
+  <pre style="font-size:13px;line-height:1.5">
+LLM → JSON DSL → WASM 渲染器 → Canvas
+                  ↑            ↑
+             安全、结构化      像素级渲染
+             无注入风险        高性能
+  </pre>
+  <p>结合 DSL 思路：</p>
+  <ul>
+    <li>LLM 生成结构化 DSL（不是 HTML）</li>
+    <li>WASM 渲染器解析 DSL，直接绘制到 Canvas</li>
+    <li>交互模型由 DSL 语义定义，不是从 HTML 提取</li>
+    <li><strong>最安全方案</strong>，没有 HTML 注入路径</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h3>方案 D：Hybrid — WASM 消毒 + DOM 渲染</h3>
+  <p><span class="tag tag-feasible">可行</span> <span class="tag tag-light">推荐</span></p>
+  <pre style="font-size:13px;line-height:1.5">
+LLM → JSON DSL → WASM 安全层 → 安全的 HTML → iframe DOM 渲染
+                  ↑               ↑
+             DSL 结构校验     生成受控 HTML
+             替换为安全组件
+  </pre>
+  <p>流程：</p>
+  <ol>
+    <li>LLM 输出 <strong>JSON DSL</strong>（非 HTML），如：<br>
+    <code>{"layout":"row","children":[{"type":"card","title":"A","action":"select:a"},...]}</code></li>
+    <li>WASM 模块将 DSL 映射到预定义的 HTML 组件库</li>
+    <li>HTML 组件库是硬编码在 WASM 中的，不可被 LLM 修改</li>
+    <li>输出安全 HTML → iframe srcdoc 渲染</li>
+  </ol>
+  <p>关键特性：<br>
+  - LLM 不能输出任意 HTML，只能选择现有组件模板<br>
+  - WASM 的组件映射表在编译期固定，无注入可能<br>
+  - 组件库可扩展（注册新组件 → 重新编译 WASM）<br>
+  - DOM 渲染保留可访问性</p>
+</div>
+
+<hr style="border-color:#333;margin:24px 0" />
+
+<h3>四个方案对比</h3>
+
+<table>
+  <tr>
+    <th>方案</th>
+    <th>安全性</th>
+    <th>丰富度</th>
+    <th>复杂度</th>
+    <th>可行性</th>
+  </tr>
+  <tr>
+    <td>A: WASM 安全网关</td>
+    <td>高</td>
+    <td>高（任意 HTML）</td>
+    <td>中</td>
+    <td>✅ 初期可用</td>
+  </tr>
+  <tr>
+    <td>B: WASM Canvas</td>
+    <td>极高</td>
+    <td>高（像素控制）</td>
+    <td>极高</td>
+    <td>❌ 远程</td>
+  </tr>
+  <tr>
+    <td>C: WASM DSL 渲染</td>
+    <td>极高</td>
+    <td>中（受 DSL 限制）</td>
+    <td>高</td>
+    <td>⏳ 中长期</td>
+  </tr>
+  <tr>
+    <td><strong>D: WASM DSL→HTML</strong></td>
+    <td><strong>极高</strong></td>
+    <td><strong>高（组件库扩展）</strong></td>
+    <td><strong>中</strong></td>
+    <td><strong>✅ 初期可用</strong></td>
+  </tr>
+</table>
+
+<h3>推荐路线</h3>
+<div class="card" style="background:#0f172a;border:1px solid #334155;">
+<pre style="font-size:14px;line-height:1.6;margin:0">
+Phase 1 (现在):   JS DSL → JS 渲染器
+                    { DSL 校验, 组件映射, iframe 渲染 }
+                    无 WASM，走通协议
+
+Phase 2 (近期):    JS DSL → WASM 安全层 → iframe 渲染
+                    加入 WASM 作为 DSL→HTML 的编译期安全保障
+                    WASM 确定性地将 DSL 映射为安全 HTML
+
+Phase 3 (远期):    JS DSL → WASM 渲染器 → Canvas
+                    可选替换渲染后端，协议不变
+                    WASM 直接绘制，跳过 HTML/iframe 中间层
+</pre>
+</div>
+
+<h3>结论</h3>
+<p><strong>WASM 的价值不在替换 HTML，而在为 DSL→HTML 映射提供编译期安全保障。</strong>
+初期先用 JS 跑通协议，后期 WASM 作为安全层渐進替代。</p>

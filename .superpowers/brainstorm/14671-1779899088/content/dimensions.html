@@ -1,0 +1,153 @@
+<style>
+  h2 { margin: 24px 0 8px; }
+  .subtitle { margin-bottom: 20px; color: #94a3b8; }
+  .card { background: #1e1e1e; padding: 16px; border-radius: 8px; margin-bottom: 16px; }
+  .section-title { color: #a78bfa; font-weight: bold; margin: 20px 0 8px; font-size: 18px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #333; }
+  th { background: #2d2d2d; }
+  .dim { color: #64748b; font-size: 13px; }
+  .flow { font-family: monospace; background: #111; padding: 8px; border-radius: 4px; font-size: 13px; line-height: 1.5; }
+</style>
+
+<h2>深度头脑风暴：交互协议的多维度设计</h2>
+<p class="subtitle">已经聊了 View/Interaction/DSL/WASM，还有哪些维度需要探索？</p>
+
+<div class="section-title">维度 1：生命周期 — View 是"发出去就忘"还是"持续更新"？</div>
+
+<div class="grid2">
+<div class="card">
+<h4 style="color:#6ee7b7">A: 一次性 View</h4>
+<div class="flow">
+AgentResponse { views: [{...}], interaction: {...} }
+  → 用户交互
+  → InteractionResponse
+  → Agent 继续
+  → View 不再需要
+</div>
+<p class="dim">简单，适合大多数场景。当前设计默认走这个。</p>
+</div>
+<div class="card">
+<h4 style="color:#93c5fd">B: 持续更新 View</h4>
+<div class="flow">
+AgentResponse { views: [{ id: "v1", ... }] }
+  → View 在 UI 中持续展示
+  → Agent 后续发 ViewUpdate { id: "v1", data: {...} }
+  → UI 原地更新，用户看到进展
+</div>
+<p class="dim">适合：长时间分析、实时数据监控、多步处理逐步展示。</p>
+</div>
+</div>
+
+<div class="section-title">维度 2：View 嵌套与组合 — 多个 View 之间怎么关联？</div>
+
+<div class="grid3">
+<div class="card">
+<h4 style="color:#fbbf24">A: 平铺列表</h4>
+<div class="flow">views: [table, chart, form]</div>
+<p class="dim">从上到下渲染。简单，当前设计默认。</p>
+</div>
+<div class="card">
+<h4 style="color:#fbbf24">B: 标签页/分栏</h4>
+<div class="flow">views: [{ type: "tabs", tabs: [
+  {label:"数据", view: table},
+  {label:"图表", view: chart}
+]}]</div>
+<p class="dim">LLM 输出组合布局 DSL。</p>
+</div>
+<div class="card">
+<h4 style="color:#fbbf24">C: 级联关联</h4>
+<div class="flow">View A (表格) → 用户选择一行
+  → InteractionResponse { viewA: "row-3" }
+  → Agent 产出 View B (该行详情)</div>
+<p class="dim">交互结果影响后续 View，类似 drill-down。</p>
+</div>
+</div>
+
+<div class="section-title">维度 3：交互深度 — 一次 AgentResponse 支持多少轮对话？</div>
+
+<div class="grid2">
+<div class="card">
+<h4 style="color:#6ee7b7">单轮 (当前设计)</h4>
+<div class="flow">
+Agent → Interaction → 用户回应 → Agent 继续
+↑___________________________↓   一次回应
+</div>
+</div>
+<div class="card">
+<h4 style="color:#93c5fd">多轮</h4>
+<div class="flow">
+Agent → Interaction → 用户回应
+  → Agent 临时处理 → 新的 Interaction → 用户再回应 → Agent 最终继续
+  ↑________________________________________________________↓  多次回应
+</div>
+<p class="dim">场景：分步向导、多步表单、逐渐深入的分析。</p>
+</div>
+</div>
+
+<div class="section-title">维度 4：视图状态 — 用户离开再回来还能看到吗？</div>
+
+<div class="grid2">
+<div class="card">
+<h4 style="color:#6ee7b7">无状态</h4>
+<p>View 只在当前对话中存在。刷新/重连后消失。</p>
+</div>
+<div class="card">
+<h4 style="color:#93c5fd">持久化</h4>
+<p>View 保存到 StateStore。重连后恢复。适合长时间后台任务的结果查看。</p>
+</div>
+</div>
+
+<div class="section-title">维度 5：多 Agent 协作的 View</div>
+
+<div class="card">
+<div class="flow">
+Orchestrator 分析任务 → 分配子任务
+  ├─ Agent A (reasoning): 输出分析 View (表格/流程图)
+  ├─ Agent B (codegen): 输出代码 View (diff)
+  └─ Agent C (review): 输出审查 View (卡片列表)
+         ↓
+ChainTransferManager 收集所有 View → 合并展示给用户
+</div>
+<p>问题：每个 Agent 的 View 是独立展示还是合并为一个 dashboard？<br>
+如果是 dashboard，需要 ViewFrame 类型——一个固定布局模板，Agent 填入内容。</p>
+</div>
+
+<div class="section-title">维度 6：错误与恢复</div>
+
+<table>
+  <tr><th>场景</th><th>问题</th><th>处理</th></tr>
+  <tr><td>View data 校验失败</td><td>LLM 输出的 DSL schema 不对</td><td>重试 prompt "上次格式有误，请重新输出"</td></tr>
+  <tr><td>用户输入无效</td><td>表单验证不通过</td><td>Agent 收到 invalid 响应，重新输出 Interaction</td></tr>
+  <tr><td>View 渲染失败</td><td>组件不支持某个 data</td><td>降级为 markdown 文本展示原始 data</td></tr>
+  <tr><td>用户长时间不响应</td><td>Interaction 超时</td><td>Agent 自动继续（超时策略可配）</td></tr>
+</table>
+
+<div class="section-title">维度 7：扩展性 — 第三方如何加新 View 类型？</div>
+
+<div class="grid2">
+<div class="card">
+<h4 style="color:#fbbf24">内置组件库</h4>
+<p>框架提供标准组件 (table/card/tabs/row)。LLM 只能选这些。</p>
+<p class="dim">安全可控，LLM 输出质量高。</p>
+</div>
+<div class="card">
+<h4 style="color:#fbbf24">插件渲染器</h4>
+<p>第三方注册新的 ViewRenderer。提供 schema + description → 自动注入 prompt。</p>
+<p class="dim">灵活，但需安全审查。</p>
+</div>
+</div>
+
+<div class="section-title">我的建议：按需渐进，不要一开始全做</div>
+
+<div class="card" style="border:1px solid #8b5cf6;background:#1e1b4b">
+<div class="flow" style="background:transparent;padding:0">
+Phase 1: 一次性 View + 平铺列表 + 单轮交互 + 无状态 + 内置组件
+Phase 2: View 持续更新 + 标签页组合 + 持久化
+Phase 3: 多轮交互 + 多 Agent 合并 + 插件渲染器
+</div>
+</div>
+
+<p>这些维度里，哪些觉得重要需要现在考虑？哪些先跳过？</p>

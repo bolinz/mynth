@@ -323,6 +323,22 @@ export async function startTui(engine: CoreEngine): Promise<void> {
     }),
   );
 
+  unsubs.push(
+    engine.eventBus.subscribe('agent.response', (_t, p) => {
+      const e = p as any;
+      log(
+        '\u2192',
+        `{cyan-fg}${e.agentId}{/} responded (${e.viewCount} views${e.hasInteraction ? ', awaiting input' : ''})`,
+        '{cyan-fg}',
+      );
+      if (e.viewCount > 0) {
+        chainPanel.pushLine(`  {cyan-fg}Agent ${e.agentId} produced ${e.viewCount} view(s){/}`);
+        chainPanel.setScrollPerc(100);
+        screen.render();
+      }
+    }),
+  );
+
   async function executeInTui(task: string): Promise<void> {
     if (!task) return;
     if (task !== '' && !commandHistory.includes(task)) {
@@ -420,6 +436,16 @@ export async function startTui(engine: CoreEngine): Promise<void> {
         log('\u25b6', `logs ${taskId}`, '{cyan-fg}');
         break;
       }
+      case 'views': {
+        const registry = engine.rendererRegistry;
+        const renderers = registry.getAll();
+        const lines = renderers.map((r) => `  {bold}${r.type}{/}  {gray-fg}${r.description}{/}`);
+        chainPanel.setContent(
+          `  {cyan-fg}/views{/}  {gray-fg}(${renderers.length} renderers){/}\n\n${lines.join('\n')}`,
+        );
+        log('\u25b6', `views (${renderers.length} renderers)`, '{cyan-fg}');
+        break;
+      }
       case 'help': {
         chainPanel.setContent(
           '  {cyan-fg}Commands:{/}\n\n' +
@@ -429,6 +455,7 @@ export async function startTui(engine: CoreEngine): Promise<void> {
             '  {bold}/approve <id>{/}  Approve pending request\n' +
             '  {bold}/reject <id>{/}   Reject pending request\n' +
             '  {bold}/pending{/}       List pending approvals\n' +
+            '  {bold}/views{/}         Show view renderer status\n' +
             '  {bold}/help{/}          This message\n' +
             '  {yellow-fg}Key: a{/} approve first  {yellow-fg}r{/} reject first\n\n' +
             '  {bold}<any text>{/}      Run a task through the chain',

@@ -1,0 +1,80 @@
+<style>
+  .category { margin-bottom: 24px; }
+  .category h3 { color: #7c3aed; margin-bottom: 8px; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-left: 8px; }
+  .tag-presentation { background: #1e40af; color: #93c5fd; }
+  .tag-interaction { background: #065f46; color: #6ee7b7; }
+  .tag-pattern { background: #7c2d12; color: #fdba74; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+</style>
+
+<h2>交互需求全景</h2>
+<p class="subtitle">按三个维度分类：展示方式、交互类型、通信模式</p>
+
+<div class="grid">
+
+<div class="category">
+<h3>📊 展示方式 <span class="tag tag-presentation">presentation</span></h3>
+<ul>
+<li><strong>Markdown</strong> — 现有，保留</li>
+<li><strong>表格</strong> — 结构化数据</li>
+<li><strong>Diff</strong> — 代码变更对比</li>
+<li><strong>流程图</strong> — 节点+边</li>
+<li><strong>线框图</strong> — UI mockup</li>
+<li><strong>图表</strong> — 柱状/折线/饼图</li>
+<li><strong>文件树</strong> — 目录结构</li>
+<li><strong>对比视图</strong> — 左右对比方案</li>
+<li><strong>时间线</strong> — 甘特图/阶段</li>
+<li><strong>卡片</strong> — 搜索结果展示</li>
+</ul>
+</div>
+
+<div class="category">
+<h3>🖱️ 交互类型 <span class="tag tag-interaction">interaction</span></h3>
+<ul>
+<li><strong>单选</strong> — 从 N 个中选 1</li>
+<li><strong>多选</strong> — 从 N 个中选 M</li>
+<li><strong>表单</strong> — 输入框/下拉/复选框</li>
+<li><strong>确认/取消</strong> — 简单 yes/no</li>
+<li><strong>自由文本输入</strong> — 用户打字</li>
+<li><strong>点击展开/钻取</strong> — 逐层深入</li>
+<li><strong>拖拽排序</strong> — 重新排列</li>
+<li><strong>内联编辑</strong> — 直接修改内容</li>
+<li><strong>审批</strong> — approve/reject/modify</li>
+<li><strong>文件选择</strong> — 浏览并选择文件</li>
+</ul>
+</div>
+
+</div>
+
+<div class="category" style="grid-column: 1 / -1;">
+<h3>🔄 通信模式 <span class="tag tag-pattern">pattern</span></h3>
+<div class="grid">
+<ul>
+<li><strong>Q&A 单轮</strong> — "写段代码"，Agent 返回代码 (已有)</li>
+<li><strong>多轮对话</strong> — Agent 提问→用户回答→Agent 继续</li>
+<li><strong>提议→审批→执行</strong> — Agent 展示方案，用户审批后执行 (HITL)</li>
+<li><strong>实时流式</strong> — Agent 边思考边输出</li>
+</ul>
+<ul>
+<li><strong>多方案对比选择</strong> — Agent 出 A/B/C 方案，用户选最优</li>
+<li><strong>分步向导</strong> — 多步骤配置，每步一交互</li>
+<li><strong>后台通知</strong> — Agent 完成任务后通知用户查看</li>
+<li><strong>协作编辑</strong> — Agent 和用户同文档协作</li>
+</ul>
+</div>
+</div>
+
+<h2>关键问题</h2>
+
+<p>这些需求可以抽象为一个通用模式：</p>
+
+<pre style="background:#1e1e1e;padding:16px;border-radius:8px;font-size:14px;line-height:1.6">
+Agent 产出结构化 View[] + 可选的 pending interaction
+     → EventBus 广播到所有 UI 通道
+     → 各通道独立渲染 + 收集交互
+     → 交互结果回调到 Agent
+     → Agent 恢复执行
+</pre>
+
+<p>当前哪些场景最迫切？或者是否有我遗漏的交互场景？</p>

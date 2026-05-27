@@ -12,3 +12,6 @@ export { HITLManager } from './HITLManager.ts';
 export type { HITLRequest, HITLOperation } from './HITLManager.ts';
 export { Tracer } from './Tracer.ts';
 export type { Span } from './Tracer.ts';
+export { RendererRegistry } from './ViewRenderer.ts';
+export type { View, ViewRenderer, Interaction, InteractionResponse } from './ViewRenderer.ts';
+export { InteractionManager } from './InteractionManager.ts';
