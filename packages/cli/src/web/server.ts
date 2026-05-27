@@ -17,6 +17,8 @@ export function startWebServer(engine: CoreEngine, port = 3000): void {
     'intervention.executed',
     'task.submitted',
     'task.completed',
+    'hitl.requested',
+    'hitl.resolved',
   ] as const;
 
   const unsubs = topics.map((topic) =>
@@ -92,6 +94,49 @@ export function startWebServer(engine: CoreEngine, port = 3000): void {
       const hops = await engine.stateStore.loadTaskHops(taskId);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(hops));
+      return;
+    }
+
+    if (url.pathname === '/pending-approvals') {
+      const pending = engine.hitlManager.getPending().map((r: any) => ({
+        id: r.id,
+        agentId: r.agentId,
+        operation: r.operation,
+        createdAt: r.createdAt,
+      }));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(pending));
+      return;
+    }
+
+    if (url.pathname === '/approve' && req.method === 'POST') {
+      let body = '';
+      req.on('data', (chunk) => { body += chunk; });
+      req.on('end', async () => {
+        try {
+          const { id, action, note } = JSON.parse(body);
+          const reqData = engine.hitlManager.getById(id);
+          if (!reqData) {
+            res.writeHead(404);
+            res.end(JSON.stringify({ error: 'Request not found' }));
+            return;
+          }
+          if (action === 'approve') {
+            await engine.hitlManager.approve(id, 'web', note);
+          } else if (action === 'reject') {
+            await engine.hitlManager.reject(id, 'web', note);
+          } else {
+            res.writeHead(400);
+            res.end(JSON.stringify({ error: 'Invalid action' }));
+            return;
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true }));
+        } catch (err) {
+          res.writeHead(500);
+          res.end(JSON.stringify({ error: String(err) }));
+        }
+      });
       return;
     }
 
