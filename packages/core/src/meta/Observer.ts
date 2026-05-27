@@ -8,6 +8,7 @@ export class Observer {
   private running = false;
   private hopHistory: Array<{ from: string; to: string; duration: number }> = [];
   private errorCounts = new Map<string, number>();
+  private waitGraph = new Map<string, Set<string>>();
   private anomalyHandlers: Array<(anomaly: Anomaly) => void> = [];
 
   start(_config: { interval: number }): void {
@@ -32,6 +33,59 @@ export class Observer {
 
   recordError(agentId: string): void {
     this.errorCounts.set(agentId, (this.errorCounts.get(agentId) ?? 0) + 1);
+  }
+
+  recordWait(agentId: string, waitingFor: string): void {
+    if (!this.waitGraph.has(agentId)) {
+      this.waitGraph.set(agentId, new Set());
+    }
+    this.waitGraph.get(agentId)!.add(waitingFor);
+  }
+
+  resolveWait(agentId: string): void {
+    this.waitGraph.delete(agentId);
+  }
+
+  detectDeadlock(): Anomaly[] {
+    const anomalies: Anomaly[] = [];
+    const visited = new Set<string>();
+    const recursionStack = new Set<string>();
+
+    const dfs = (node: string): boolean => {
+      if (recursionStack.has(node)) return true;
+      if (visited.has(node)) return false;
+      visited.add(node);
+      recursionStack.add(node);
+
+      const waitSet = this.waitGraph.get(node);
+      if (waitSet) {
+        for (const waitingFor of waitSet) {
+          if (dfs(waitingFor)) return true;
+        }
+      }
+
+      recursionStack.delete(node);
+      return false;
+    };
+
+    for (const node of this.waitGraph.keys()) {
+      if (!visited.has(node)) {
+        if (dfs(node)) {
+          anomalies.push({
+            type: 'deadlock_detected',
+            agentId: node,
+            details: {
+              waitGraph: Array.from(this.waitGraph.entries()).map(([k, v]) => ({
+                from: k,
+                waitingFor: Array.from(v),
+              })),
+            },
+          });
+        }
+      }
+    }
+
+    return anomalies;
   }
 
   hopCount(): number {

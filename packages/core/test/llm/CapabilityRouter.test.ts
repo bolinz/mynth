@@ -40,6 +40,29 @@ describe('CapabilityRouter', () => {
   });
 });
 
+describe('CapabilityRouter convergence', () => {
+  it('should not swap before min samples', () => {
+    const router = new CapabilityRouter(new LLMPool());
+    for (let i = 0; i < 5; i++) {
+      router.learn('reasoning', false);
+    }
+    const stats = router.getStats('reasoning');
+    expect(stats.rate).toBe(0);
+  });
+
+  it('should swap when success rate is low', () => {
+    const router = new CapabilityRouter(new LLMPool());
+    router.setConvergence({ minSamples: 3, cooldownMs: 0, windowSize: 5 });
+    for (let i = 0; i < 5; i++) {
+      router.learn('reasoning', false);
+    }
+    // Should have swapped primary/fallback
+    const routes = router.getRoutes();
+    const reasonRoute = routes.find((r) => r.type === 'reasoning');
+    expect(reasonRoute?.primary).toBe('gpt-4o');
+  });
+});
+
 describe('BudgetTracker multi-level', () => {
   it('should enforce per-task limit', () => {
     const bt = new BudgetTracker({ perTask: 500 });

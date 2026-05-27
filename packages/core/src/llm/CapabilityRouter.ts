@@ -16,6 +16,14 @@ export interface RoutingRule {
 export class CapabilityRouter {
   private routes: RoutingRule[] = [];
   private history = new Map<string, { successes: number; failures: number }>();
+  private convergenceConfig = {
+    windowSize: 10,
+    confidenceThreshold: 0.5,
+    minSamples: 10,
+    cooldownMs: 60000,
+  };
+  private lastSwapTime = new Map<string, number>();
+  private recentResults = new Map<string, boolean[]>();
 
   constructor(private pool: LLMPool) {
     this.routes = [
@@ -25,6 +33,10 @@ export class CapabilityRouter {
       { type: 'plan', primary: 'claude-sonnet', fallback: 'gpt-4o' },
       { type: 'creative', primary: 'claude-sonnet', fallback: 'gpt-4o' },
     ];
+  }
+
+  setConvergence(config: Partial<typeof this.convergenceConfig>): void {
+    Object.assign(this.convergenceConfig, config);
   }
 
   getRoutes(): RoutingRule[] {
@@ -50,22 +62,37 @@ export class CapabilityRouter {
 
   learn(capabilityType: string, success: boolean): void {
     const key = capabilityType;
+
+    // Sliding window for swap decisions
+    const recent = this.recentResults.get(key) ?? [];
+    recent.push(success);
+    if (recent.length > this.convergenceConfig.windowSize) recent.shift();
+    this.recentResults.set(key, recent);
+
+    // Update permanent history (always, for stats)
     const entry = this.history.get(key) ?? { successes: 0, failures: 0 };
     if (success) entry.successes++;
     else entry.failures++;
     this.history.set(key, entry);
 
-    const total = entry.successes + entry.failures;
-    if (total >= 10) {
-      const rate = entry.successes / total;
-      if (rate < 0.5 && this.routes.length > 1) {
-        const rule = this.routes.find((r) => r.type === capabilityType);
-        if (rule) {
-          // Swap primary and fallback if success rate is low
-          const { primary, fallback } = rule;
-          rule.primary = fallback;
-          rule.fallback = primary;
-        }
+    // Not enough samples yet for swap decision
+    if (recent.length < this.convergenceConfig.minSamples) return;
+
+    const successes = recent.filter(Boolean).length;
+    const rate = successes / recent.length;
+
+    // Cool-down check
+    const lastSwap = this.lastSwapTime.get(key) ?? 0;
+    if (Date.now() - lastSwap < this.convergenceConfig.cooldownMs) return;
+
+    // Swap if rate is low
+    if (rate < this.convergenceConfig.confidenceThreshold && this.routes.length > 1) {
+      const rule = this.routes.find((r) => r.type === capabilityType);
+      if (rule) {
+        const { primary, fallback } = rule;
+        rule.primary = fallback;
+        rule.fallback = primary;
+        this.lastSwapTime.set(key, Date.now());
       }
     }
   }
