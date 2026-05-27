@@ -6,7 +6,14 @@ describe('MemoryQueue backpressure', () => {
     const q = new MemoryQueue();
     q.setCapacity(100);
     q.setThresholds(0.6, 0.8);
-    const result = await q.enqueue({ id: '1', type: 'test', from: 'a', to: 'b', payload: {}, timestamp: Date.now() });
+    const result = await q.enqueue({
+      id: '1',
+      type: 'test',
+      from: 'a',
+      to: 'b',
+      payload: {},
+      timestamp: Date.now(),
+    });
     expect(result).toBeNull();
   });
 
@@ -16,7 +23,14 @@ describe('MemoryQueue backpressure', () => {
     q.setThresholds(0.6, 0.8);
     let lastResult = null;
     for (let i = 0; i < 7; i++) {
-      lastResult = await q.enqueue({ id: String(i), type: 'test', from: 'a', to: 'b', payload: {}, timestamp: Date.now() });
+      lastResult = await q.enqueue({
+        id: String(i),
+        type: 'test',
+        from: 'a',
+        to: 'b',
+        payload: {},
+        timestamp: Date.now(),
+      });
     }
     expect(lastResult).not.toBeNull();
     expect(lastResult!.severity).toBe('mild');
@@ -28,7 +42,14 @@ describe('MemoryQueue backpressure', () => {
     q.setThresholds(0.6, 0.8);
     let lastResult = null;
     for (let i = 0; i < 9; i++) {
-      lastResult = await q.enqueue({ id: String(i), type: 'test', from: 'a', to: 'b', payload: {}, timestamp: Date.now() });
+      lastResult = await q.enqueue({
+        id: String(i),
+        type: 'test',
+        from: 'a',
+        to: 'b',
+        payload: {},
+        timestamp: Date.now(),
+      });
     }
     expect(lastResult).not.toBeNull();
     expect(lastResult!.severity).toBe('critical');
@@ -38,7 +59,14 @@ describe('MemoryQueue backpressure', () => {
     const q = new MemoryQueue();
     q.setCapacity(3);
     for (let i = 0; i < 4; i++) {
-      const result = await q.enqueue({ id: String(i), type: 'test', from: 'a', to: 'b', payload: {}, timestamp: Date.now() });
+      const result = await q.enqueue({
+        id: String(i),
+        type: 'test',
+        from: 'a',
+        to: 'b',
+        payload: {},
+        timestamp: Date.now(),
+      });
       if (i === 3) {
         expect(result).not.toBeNull();
         expect(result!.severity).toBe('critical');

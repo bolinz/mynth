@@ -1,5 +1,5 @@
-import { EngineConfigSchema, type ValidatedEngineConfig } from './schema.ts';
 import type { Persistence } from '../persistence/Persistence.ts';
+import { EngineConfigSchema, type ValidatedEngineConfig } from './schema.ts';
 
 export interface ConfigSnapshot {
   id: string;

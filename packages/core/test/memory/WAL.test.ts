@@ -2,9 +2,9 @@ import { mkdtempSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { describe, expect, it } from 'vitest';
-import { LevelDBAdapter } from '../../src/persistence/LevelDBAdapter.ts';
 import { GlobalMemory } from '../../src/memory/GlobalMemory.ts';
 import { MemoryGateway } from '../../src/memory/MemoryGateway.ts';
+import { LevelDBAdapter } from '../../src/persistence/LevelDBAdapter.ts';
 
 describe('MemoryGateway WAL', () => {
   it('should recover contributions after crash', async () => {
