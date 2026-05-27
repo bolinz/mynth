@@ -60,7 +60,7 @@ export async function startTui(engine: CoreEngine): Promise<void> {
   const logPanel = blessed.box({
     top: '60%',
     left: 0,
-    width: '100%',
+    width: '50%',
     height: '40%-2',
     label: ' {bold}Events{/bold} ',
     border: { type: 'line' },
@@ -68,6 +68,20 @@ export async function startTui(engine: CoreEngine): Promise<void> {
     scrollable: true,
     alwaysScroll: true,
     tags: true,
+  });
+
+  const approvalPanel = blessed.box({
+    top: '60%',
+    left: '50%',
+    width: '50%',
+    height: '40%-2',
+    label: ' {bold}Approvals{/bold} ',
+    border: { type: 'line' },
+    style: { border: { fg: 220 }, label: { fg: 'yellow' } },
+    scrollable: true,
+    alwaysScroll: true,
+    tags: true,
+    hidden: true,
   });
 
   const statusBar = blessed.box({
@@ -93,11 +107,13 @@ export async function startTui(engine: CoreEngine): Promise<void> {
   screen.append(statsPanel);
   screen.append(chainPanel);
   screen.append(logPanel);
+  screen.append(approvalPanel);
   screen.append(statusBar);
   screen.append(input);
 
   let taskCount = 0;
   let hopCount = 0;
+  let pendingApprovals = 0;
   let currentTask: string | null = null;
   let cancelled = false;
   let currentHops: string[] = [];
@@ -123,9 +139,27 @@ export async function startTui(engine: CoreEngine): Promise<void> {
         `  {green-fg}Agents:{/}   ${agents.length}  {gray-fg}(${active} active){/}\n` +
         `  {white-fg}Current:{/}  ${currentTask ?? '{gray-fg}idle{/}'}`,
     );
+    pendingApprovals = engine.hitlManager.getPendingCount();
     statusBar.setContent(
-      ` {black-fg}{231-fg} Agents:{/} ${agents.length}  |  Tasks: ${taskCount}  |  Hops: ${hopCount}  `,
+      ` {black-fg}{231-fg} Agents:{/} ${agents.length}  |  Tasks: ${taskCount}  |  Hops: ${hopCount}  ${pendingApprovals > 0 ? ` | {yellow-fg}Pending: ${pendingApprovals}{/}` : ''}`,
     );
+    screen.render();
+  }
+
+  function updateApprovalPanel(): void {
+    const pending = engine.hitlManager.getPending();
+    if (pending.length === 0) {
+      approvalPanel.hide();
+      screen.render();
+      return;
+    }
+    approvalPanel.show();
+    const lines = pending.map((req) => {
+      return `  {bold}${req.id}{/}\n` +
+        `    Agent: ${req.agentId}  |  Type: {yellow-fg}${req.operation.type}{/}\n` +
+        `    {white-fg}${req.operation.summary}{/}\n`;
+    });
+    approvalPanel.setContent('\n' + lines.join('\n'));
     screen.render();
   }
 
@@ -254,6 +288,19 @@ export async function startTui(engine: CoreEngine): Promise<void> {
     engine.eventBus.subscribe('intervention.executed', (_t, p) => {
       const e = p as any;
       log('\u2139', `{yellow-fg}${e.type}{/}`, '{yellow-fg}');
+    }),
+  );
+
+  unsubs.push(
+    engine.eventBus.subscribe('hitl.requested', () => {
+      updateApprovalPanel();
+      updateStats();
+    }),
+  );
+  unsubs.push(
+    engine.eventBus.subscribe('hitl.resolved', () => {
+      updateApprovalPanel();
+      updateStats();
     }),
   );
 
@@ -410,6 +457,7 @@ export async function startTui(engine: CoreEngine): Promise<void> {
   input.focus();
   updateAgentPanel();
   updateChainPanel([]);
+  updateApprovalPanel();
   updateStats();
   screen.render();
 }
