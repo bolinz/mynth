@@ -114,6 +114,7 @@ export async function startTui(engine: CoreEngine): Promise<void> {
   let taskCount = 0;
   let hopCount = 0;
   let pendingApprovals = 0;
+  let degradationLevel = 0;
   let currentTask: string | null = null;
   let cancelled = false;
   let currentHops: string[] = [];
@@ -133,10 +134,13 @@ export async function startTui(engine: CoreEngine): Promise<void> {
   function updateStats(): void {
     const agents = engine.getAgentPool().getAllAgents();
     const active = agents.filter((a) => a.state !== 'idle').length;
+    const degColor =
+      degradationLevel === 0 ? '{green-fg}' : degradationLevel >= 3 ? '{red-fg}' : '{yellow-fg}';
     statsPanel.setContent(
       `  {cyan-fg}Tasks:{/}    ${taskCount}\n` +
         `  {yellow-fg}Hops:{/}     ${hopCount}\n` +
         `  {green-fg}Agents:{/}   ${agents.length}  {gray-fg}(${active} active){/}\n` +
+        `  ${degColor}Degrad:{/}   L${degradationLevel}\n` +
         `  {white-fg}Current:{/}  ${currentTask ?? '{gray-fg}idle{/}'}`,
     );
     pendingApprovals = engine.hitlManager.getPendingCount();
@@ -283,6 +287,19 @@ export async function startTui(engine: CoreEngine): Promise<void> {
     engine.eventBus.subscribe('anomaly.detected', (_t, p) => {
       const e = p as any;
       log('\u26a0', `{red-fg}${e.type}{/}${e.agentId ? ' (' + e.agentId + ')' : ''}`, '{red-fg}');
+    }),
+  );
+
+  unsubs.push(
+    engine.eventBus.subscribe('system.degradation_changed', (_t, p) => {
+      const e = p as any;
+      degradationLevel = e.level;
+      log(
+        e.level >= 3 ? '{red-fg}\u26a0{/}' : '{yellow-fg}\u26a0{/}',
+        `Degradation L${e.level}`,
+        e.level >= 3 ? '{red-fg}' : '{yellow-fg}',
+      );
+      updateStats();
     }),
   );
 

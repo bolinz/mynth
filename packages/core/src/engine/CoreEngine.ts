@@ -138,7 +138,7 @@ export class CoreEngine {
     this.shutdown = new GracefulShutdown(this.scheduler, this.memory, this.db, {
       drainTimeout: 10000,
     });
-    this.degradation = new DegradationMonitor();
+    this.degradation = new DegradationMonitor(this.eventBus);
 
     this.registerDefaultAgents();
     this.running = true;

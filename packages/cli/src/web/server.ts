@@ -19,6 +19,7 @@ export function startWebServer(engine: CoreEngine, port = 3000): void {
     'task.completed',
     'hitl.requested',
     'hitl.resolved',
+    'system.degradation_changed',
   ] as const;
 
   const unsubs = topics.map((topic) =>
