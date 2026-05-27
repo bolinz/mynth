@@ -127,7 +127,7 @@ export class CoreEngine {
     // LLM infrastructure
     this.llmPool = new LLMPool();
     this.budgetTracker = new BudgetTracker();
-    this.promptRegistry = new PromptRegistry();
+    this.promptRegistry = new PromptRegistry(this.rendererRegistry);
 
     if (process.env.ANTHROPIC_API_KEY) {
       const anthropic = new AnthropicProvider(
