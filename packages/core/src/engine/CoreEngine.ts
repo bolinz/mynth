@@ -59,6 +59,7 @@ export class CoreEngine {
   shutdown!: GracefulShutdown;
   degradation!: DegradationMonitor;
   hitlManager!: HITLManager;
+  private evictTimer?: ReturnType<typeof setInterval>;
 
   get eventBus(): EventBus {
     return this.bus as unknown as EventBus;
@@ -140,12 +141,23 @@ export class CoreEngine {
     });
     this.degradation = new DegradationMonitor(this.eventBus);
 
+    this.evictTimer = setInterval(() => {
+      const evicted = this.pool.evictIdle();
+      if (evicted > 0) {
+        this.bus?.publish('intervention.executed', {
+          type: 'warn',
+          reason: `Evicted ${evicted} idle agents from warm pool`,
+        });
+      }
+    }, 30000);
+
     this.registerDefaultAgents();
     this.running = true;
   }
 
   async stop(): Promise<void> {
     this.running = false;
+    if (this.evictTimer) clearInterval(this.evictTimer);
     await this.shutdown.shutdown();
   }
 

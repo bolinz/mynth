@@ -1,51 +1,52 @@
-import type { AgentId, Capability, CapabilityType } from '@mynth/sdk';
-import type { MessageBus } from '../message-bus/MessageBus.ts';
 import { BaseAgent } from './BaseAgent.ts';
+import { WarmPool } from './WarmPool.ts';
+import type { Capability, CapabilityType } from '@mynth/sdk';
+import type { EventBus } from '../message-bus/EventBus.ts';
 
 export class AgentPool {
-  private agents = new Map<AgentId, BaseAgent>();
-  private bus?: MessageBus;
+  private warm = new WarmPool();
 
-  setBus(bus: MessageBus): void {
-    this.bus = bus;
+  setBus(bus: EventBus): void {
+    this.warm = new WarmPool(bus as any);
   }
 
   createAgent(id: string, name: string, capabilities: Capability[]): BaseAgent {
-    const agent = new BaseAgent(id, name, capabilities, this.bus as any);
-    this.agents.set(agent.id, agent);
-    return agent;
+    return this.warm.createAgent(id, name, capabilities, 'cold');
   }
 
-  acquire(capabilityType: CapabilityType): BaseAgent | null {
-    for (const agent of this.agents.values()) {
-      if (agent.state === 'idle' && agent.capabilities.some((c) => c.type === capabilityType)) {
-        return agent;
-      }
-    }
-    return null;
-  }
-
-  release(agent: BaseAgent): void {
-    agent.complete();
-  }
-
-  getAgent(agentId: AgentId): BaseAgent | undefined {
-    return this.agents.get(agentId);
+  getAgent(id: string): BaseAgent | undefined {
+    return this.warm.getAgent(id);
   }
 
   getAllAgents(): BaseAgent[] {
-    return Array.from(this.agents.values());
+    return this.warm.getAllAgents();
+  }
+
+  acquire(capabilityType: CapabilityType): BaseAgent | null {
+    return this.warm.acquire(capabilityType);
+  }
+
+  release(agent: BaseAgent): void {
+    this.warm.release(agent);
+  }
+
+  findAgent(capabilityType: CapabilityType): BaseAgent | null {
+    return this.warm.acquire(capabilityType);
   }
 
   findByCapability(capabilityType: CapabilityType): BaseAgent[] {
     return this.getAllAgents().filter((a) => a.capabilities.some((c) => c.type === capabilityType));
   }
 
-  destroyAgent(agentId: AgentId): void {
-    const agent = this.agents.get(agentId);
+  destroyAgent(agentId: string): void {
+    const agent = this.warm.getAgent(agentId);
     if (agent) {
       agent.shutdown();
-      this.agents.delete(agentId);
+      this.warm.removeAgent(agentId);
     }
+  }
+
+  evictIdle(): number {
+    return this.warm.evictIdle();
   }
 }

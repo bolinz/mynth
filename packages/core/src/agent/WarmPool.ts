@@ -99,6 +99,16 @@ export class WarmPool {
     return evicted;
   }
 
+  removeAgent(id: string): boolean {
+    let found = false;
+    for (const [capType, pool] of this.pools) {
+      const remaining = pool.filter((entry) => entry.agent.id !== id);
+      if (remaining.length !== pool.length) found = true;
+      this.pools.set(capType, remaining);
+    }
+    return found;
+  }
+
   size(capabilityType?: CapabilityType): number {
     if (capabilityType) {
       return this.pools.get(capabilityType)?.length ?? 0;
