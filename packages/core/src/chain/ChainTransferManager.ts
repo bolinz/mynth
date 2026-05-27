@@ -9,6 +9,7 @@ import type { InterventionAction } from '../meta/Intervener.ts';
 import type { Intervener } from '../meta/Intervener.ts';
 import type { Observer } from '../meta/Observer.ts';
 import type { PromptRegistry } from '../prompt/PromptRegistry.ts';
+import { extractJSON, validateJSON } from '../prompt/PromptSchema.ts';
 
 export interface TransferResult {
   taskId: string;
@@ -268,8 +269,29 @@ export class ChainTransferManager {
         return '';
       }
       const loop = new ReActLoop(provider);
-      const prompt = this.promptRegistry?.buildPrompt(capability, task, '') ?? task;
+      const prompt = this.promptRegistry?.buildStructuredPrompt(capability, task, '') ?? task;
       const result = await loop.execute(prompt, capability);
+
+      // Structured output validation
+      const schema = this.promptRegistry?.getSchema(capability);
+      if (schema) {
+        const json = extractJSON(result);
+        if (json) {
+          const validation = validateJSON(json, schema.schema);
+          if (!validation.success) {
+            if (schema.strict) {
+              throw new Error(
+                `Structured output validation failed for ${capability}: ${validation.error}`,
+              );
+            }
+            this.bus?.publish('anomaly.detected', {
+              type: 'structured_output_validation_failed',
+              agentId,
+              details: { capability, error: validation.error },
+            });
+          }
+        }
+      }
 
       if (this.budgetTracker) {
         this.budgetTracker.record(agentId, capability, prompt.length, result.length);

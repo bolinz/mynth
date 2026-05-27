@@ -1,5 +1,5 @@
-import { DEFAULT_SYSTEM_PROMPT, SYSTEM_PROMPTS } from './system-prompts.ts';
 import type { PromptSchema } from './PromptSchema.ts';
+import { DEFAULT_SYSTEM_PROMPT, SYSTEM_PROMPTS } from './system-prompts.ts';
 
 export class PromptRegistry {
   private schemas = new Map<string, PromptSchema<unknown>>();
