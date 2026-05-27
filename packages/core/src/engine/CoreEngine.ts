@@ -1,3 +1,4 @@
+import type { TenantContext } from '@mynth/sdk';
 import { AgentPool } from '../agent/AgentPool.ts';
 import { ChainTransferManager } from '../chain/ChainTransferManager.ts';
 import { EngineConfigSchema, type ValidatedEngineConfig } from '../config/schema.ts';
@@ -25,6 +26,7 @@ import { GracefulShutdown } from './GracefulShutdown.ts';
 
 export interface EngineConfig {
   dbPath: string;
+  tenant?: TenantContext;
   maxHops?: number;
   agents?: Array<{
     id: string;
@@ -96,7 +98,7 @@ export class CoreEngine {
     this.db = new LevelDBAdapter(this.config.dbPath);
     await this.db.open();
 
-    this.stateStore = new StateStore(this.db);
+    this.stateStore = new StateStore(this.db, this.config.tenant);
     this.bus = new MessageBus();
     this.pool = new AgentPool();
     this.pool.setBus(this.bus);
