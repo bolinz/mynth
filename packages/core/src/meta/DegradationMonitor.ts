@@ -1,3 +1,5 @@
+import type { EventBus } from '../message-bus/EventBus.ts';
+
 export type DimensionHealth = 'ok' | 'degraded' | 'down';
 export type DegradationLevel = 0 | 1 | 2 | 3 | 4;
 
@@ -17,11 +19,18 @@ export class DegradationMonitor {
 
   private recoveryTimer: ReturnType<typeof setTimeout> | null = null;
   private _onLevelChange?: (level: DegradationLevel) => void;
+  private eventBus?: EventBus;
+  private lastPublishedLevel: DegradationLevel = 0;
+
+  constructor(eventBus?: EventBus) {
+    this.eventBus = eventBus;
+  }
 
   setDimension(dim: string, health: DimensionHealth, reason?: string): void {
     this.dimensions[dim] = { health, lastCheck: Date.now(), reason };
     const level = this.computeLevel();
     this._onLevelChange?.(level);
+    this.publishIfChanged(level);
   }
 
   getDimension(dim: string): DimensionState {
@@ -62,5 +71,15 @@ export class DegradationMonitor {
 
   getSummary(): Record<string, DimensionState> {
     return { ...this.dimensions };
+  }
+
+  private publishIfChanged(level: DegradationLevel): void {
+    if (level === this.lastPublishedLevel) return;
+    this.lastPublishedLevel = level;
+    const dimensions: Record<string, { health: string; reason?: string }> = {};
+    for (const [key, state] of Object.entries(this.dimensions)) {
+      dimensions[key] = { health: state.health, reason: state.reason };
+    }
+    this.eventBus?.publish('system.degradation_changed', { level, dimensions });
   }
 }
