@@ -178,6 +178,19 @@ export class CoreEngine {
     });
 
     const analysis = await this.orchestrator.analyze({ id: taskId, description, priority: 1 });
+
+    const predicted = this.orchestrator.predictNext(analysis.capabilities);
+    for (const cap of predicted) {
+      const existing = this.pool.acquire(cap as any);
+      if (!existing) {
+        this.pool.createAgent(`warm-${cap}-${Date.now()}`, `Warm ${cap}`, [
+          { type: cap as any, level: 5, confidence: 0.5 },
+        ]);
+      } else {
+        this.pool.release(existing);
+      }
+    }
+
     const taskContext = await this.orchestrator.initializeChain(
       {
         id: taskId,

@@ -104,6 +104,14 @@ export class Orchestrator {
     };
   }
 
+  predictNext(capabilities: string[]): string[] {
+    const idx = capabilities.indexOf('reasoning');
+    if (idx >= 0 && idx < capabilities.length - 1) {
+      return [capabilities[idx + 1]];
+    }
+    return [];
+  }
+
   private inferCapabilities(description: string): string[] {
     const lower = description.toLowerCase();
     const words = lower.split(/[\s,]+/);
