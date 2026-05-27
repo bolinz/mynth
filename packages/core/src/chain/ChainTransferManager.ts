@@ -8,6 +8,7 @@ import type { MessageBus } from '../message-bus/MessageBus.ts';
 import type { InterventionAction } from '../meta/Intervener.ts';
 import type { Intervener } from '../meta/Intervener.ts';
 import type { Observer } from '../meta/Observer.ts';
+import type { Tracer } from '../meta/Tracer.ts';
 import type { PromptRegistry } from '../prompt/PromptRegistry.ts';
 import { extractJSON, validateJSON } from '../prompt/PromptSchema.ts';
 
@@ -37,7 +38,10 @@ export class ChainTransferManager {
     private promptRegistry?: PromptRegistry,
     private budgetTracker?: BudgetTracker,
     private capabilityRouter?: CapabilityRouter,
-  ) {}
+    private tracer?: Tracer,
+  ) {
+    this.tracer = tracer;
+  }
 
   async startChain(taskContext: TaskContext, firstAgentId: AgentId): Promise<TransferResult> {
     this._taskContext = taskContext;
@@ -77,10 +81,14 @@ export class ChainTransferManager {
 
       agent.startWork();
       const cap = agent.capabilities[0]?.type ?? 'reasoning';
+      const traceId = this._taskContext?.taskId ?? '';
+      const hopSpan = this.tracer?.startSpan(`hop.${cap}`, traceId);
       const llmResult = await this.executeWithLLM(
         agent.id,
         this._taskContext?.description ?? '',
         cap,
+        traceId,
+        hopSpan?.spanId,
       );
 
       agent.lastLlmOutput = llmResult ?? '';
@@ -89,6 +97,13 @@ export class ChainTransferManager {
       const remaining = this.computeRemaining();
       const decision = agent.decideTransfer(remaining, this.pool);
       const duration = Date.now() - hopStart;
+
+      this.tracer?.endSpan(hopSpan?.spanId ?? '', {
+        agent: agent.id,
+        decision: decision.action,
+        nextAgent: decision.nextAgent ?? '',
+        duration,
+      });
 
       const llmSummary = agent.lastLlmOutput ? agent.lastLlmOutput.slice(0, 200) : '';
       const note = decision.reason + (llmSummary ? ` | ${llmSummary}` : '');
@@ -235,10 +250,20 @@ export class ChainTransferManager {
     });
   }
 
-  private async executeWithLLM(agentId: string, task: string, capability: string): Promise<string> {
+  private async executeWithLLM(
+    agentId: string,
+    task: string,
+    capability: string,
+    traceId?: string,
+    parentSpanId?: string,
+  ): Promise<string> {
     if (!this.llmPool) {
       return '';
     }
+
+    const llmSpan = traceId
+      ? this.tracer?.startSpan(`llm.${capability}`, traceId, parentSpanId)
+      : undefined;
 
     if (this.budgetTracker) {
       const check = this.budgetTracker.check(agentId, capability);
@@ -297,8 +322,15 @@ export class ChainTransferManager {
         this.budgetTracker.record(agentId, capability, prompt.length, result.length);
       }
 
+      this.tracer?.endSpan(llmSpan?.spanId ?? '', {
+        model: process.env.ANTHROPIC_API_KEY ? 'claude' : 'openai',
+        inputLength: prompt.length,
+        outputLength: result.length,
+      });
+
       return result;
     } catch (err) {
+      this.tracer?.endSpan(llmSpan?.spanId ?? '', { error: String(err) });
       this.bus?.publish('anomaly.detected', {
         type: 'agent_error',
         agentId,

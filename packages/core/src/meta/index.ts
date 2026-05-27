@@ -10,3 +10,5 @@ export { DegradationMonitor } from './DegradationMonitor.ts';
 export type { DimensionHealth, DegradationLevel, DimensionState } from './DegradationMonitor.ts';
 export { HITLManager } from './HITLManager.ts';
 export type { HITLRequest, HITLOperation } from './HITLManager.ts';
+export { Tracer } from './Tracer.ts';
+export type { Span } from './Tracer.ts';

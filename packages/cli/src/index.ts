@@ -12,6 +12,7 @@ import { pendingCommand } from './commands/pending.ts';
 import { runCommand } from './commands/run.ts';
 import { statusCommand } from './commands/status.ts';
 import { stopCommand } from './commands/stop.ts';
+import { traceCommand } from './commands/trace.ts';
 import { startTui } from './tui/index.ts';
 import { startWebServer } from './web/server.ts';
 
@@ -101,6 +102,12 @@ cli
     await approveCommand(engine, id, options);
     await engine.stop();
   });
+
+cli.command('trace [taskId]', 'View execution traces').action(async (taskId?: string) => {
+  await engine.start();
+  await traceCommand(engine, taskId);
+  await engine.stop();
+});
 
 cli.help();
 cli.version('0.2.1');

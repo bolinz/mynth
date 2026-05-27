@@ -17,6 +17,7 @@ import { HITLManager } from '../meta/HITLManager.ts';
 import { Intervener } from '../meta/Intervener.ts';
 import { Observer } from '../meta/Observer.ts';
 import { Orchestrator } from '../meta/Orchestrator.ts';
+import { Tracer } from '../meta/Tracer.ts';
 import { LevelDBAdapter } from '../persistence/LevelDBAdapter.ts';
 import type { Persistence } from '../persistence/Persistence.ts';
 import { StateStore } from '../persistence/StateStore.ts';
@@ -61,6 +62,7 @@ export class CoreEngine {
   shutdown!: GracefulShutdown;
   degradation!: DegradationMonitor;
   hitlManager!: HITLManager;
+  tracer!: Tracer;
   private evictTimer?: ReturnType<typeof setInterval>;
 
   get eventBus(): EventBus {
@@ -138,6 +140,7 @@ export class CoreEngine {
     }
 
     this.capabilityRouter = new CapabilityRouter(this.llmPool);
+    this.tracer = new Tracer();
     this.shutdown = new GracefulShutdown(this.scheduler, this.memory, this.db, {
       drainTimeout: 10000,
     });
@@ -218,6 +221,7 @@ export class CoreEngine {
       this.promptRegistry,
       this.budgetTracker,
       this.capabilityRouter,
+      this.tracer,
     );
     const result = await chain.startChain(taskContext, analysis.firstAgent);
 
