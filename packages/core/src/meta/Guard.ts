@@ -1,3 +1,5 @@
+import type { HITLOperation } from './HITLManager.ts';
+
 export type Role = 'admin' | 'developer' | 'reviewer' | 'viewer';
 
 export interface SecurityRequest {
@@ -9,6 +11,18 @@ export interface SecurityRequest {
 export interface SecurityCheck {
   allowed: boolean;
   reason?: string;
+}
+
+export interface OperationCheck {
+  allowed: boolean;
+  needsApproval: boolean;
+  reason?: string;
+  requestData?: {
+    agentId: string;
+    taskId: string;
+    operation: HITLOperation;
+    triggeredBy: 'guard_rule' | 'agent_self_assess';
+  };
 }
 
 export interface SecurityPolicy {
@@ -88,6 +102,48 @@ export class Guard {
       action: `tool:${toolId}`,
       resource: toolId,
     });
+  }
+
+  checkOperation(agentId: string, taskId: string, operation: HITLOperation): OperationCheck {
+    const role = this.agentRoles.get(agentId) ?? 'viewer';
+
+    if (operation.type === 'budget.override' && role !== 'admin') {
+      return {
+        allowed: false,
+        needsApproval: true,
+        reason: 'budget override requires admin approval',
+        requestData: { agentId, taskId, operation, triggeredBy: 'guard_rule' },
+      };
+    }
+
+    if (operation.type === 'config.modify') {
+      return {
+        allowed: false,
+        needsApproval: true,
+        reason: 'config modification requires approval',
+        requestData: { agentId, taskId, operation, triggeredBy: 'guard_rule' },
+      };
+    }
+
+    if (operation.type === 'task.cancel' && role !== 'admin') {
+      return {
+        allowed: false,
+        needsApproval: true,
+        reason: 'cancelling tasks requires approval',
+        requestData: { agentId, taskId, operation, triggeredBy: 'guard_rule' },
+      };
+    }
+
+    if (operation.type === 'chain.transfer' && role !== 'admin') {
+      return {
+        allowed: false,
+        needsApproval: true,
+        reason: 'chain transfer requires approval',
+        requestData: { agentId, taskId, operation, triggeredBy: 'guard_rule' },
+      };
+    }
+
+    return { allowed: true, needsApproval: false };
   }
 
   addPolicy(policy: SecurityPolicy): void {

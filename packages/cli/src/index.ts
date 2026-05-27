@@ -3,10 +3,12 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { CoreEngine } from '@mynth/core';
 import { cac } from 'cac';
+import { approveCommand } from './commands/approve.ts';
 import { historyCommand } from './commands/history.ts';
 import { initCommand } from './commands/init.ts';
 import { listCommand } from './commands/list.ts';
 import { logsCommand } from './commands/logs.ts';
+import { pendingCommand } from './commands/pending.ts';
 import { runCommand } from './commands/run.ts';
 import { statusCommand } from './commands/status.ts';
 import { stopCommand } from './commands/stop.ts';
@@ -83,6 +85,22 @@ cli.command('stop <taskId>', 'Cancel a running task').action(async (taskId: stri
   await stopCommand(engine, taskId);
   await engine.stop();
 });
+
+cli.command('pending', 'Show pending approval requests').action(async () => {
+  await engine.start();
+  await pendingCommand(engine);
+  await engine.stop();
+});
+
+cli
+  .command('approve <id>', 'Approve or reject a pending request')
+  .option('-r, --reject', 'Reject instead of approve')
+  .option('-n, --note <text>', 'Optional note')
+  .action(async (id: string, options: { reject?: boolean; note?: string }) => {
+    await engine.start();
+    await approveCommand(engine, id, options);
+    await engine.stop();
+  });
 
 cli.help();
 cli.version('0.2.1');

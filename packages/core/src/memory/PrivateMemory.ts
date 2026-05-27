@@ -64,7 +64,7 @@ export class PrivateMemory {
     }
   }
 
-  prune(threshold = 0.2): number {
+  async prune(threshold = 0.2): Promise<number> {
     const now = Date.now();
     let removed = 0;
     for (const [key, item] of this.l1) {
@@ -72,6 +72,9 @@ export class PrivateMemory {
       const decayed = item.importance * 0.9 ** daysOld;
       if (decayed < threshold && item.accessCount < 3) {
         this.l1.delete(key);
+        if (this.persistence) {
+          await this.persistence.delete(`mem:${this.agentId}:${key}`);
+        }
         removed++;
       }
     }
