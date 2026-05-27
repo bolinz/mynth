@@ -27,14 +27,14 @@ export const tableRenderer: ViewRenderer = {
   },
   renderWeb(view) {
     const { headers, rows } = view.data as { headers: string[]; rows: string[][] };
-    const thead = headers.map((h) => `<th>${escape(h)}</th>`).join('');
+    const thead = headers.map((h) => `<th>${htmlEscape(h)}</th>`).join('');
     const trows = rows
-      .map((r) => `<tr>${r.map((c) => `<td>${escape(c)}</td>`).join('')}</tr>`)
+      .map((r) => `<tr>${r.map((c) => `<td>${htmlEscape(c)}</td>`).join('')}</tr>`)
       .join('');
     return `<table><thead><tr>${thead}</tr></thead><tbody>${trows}</tbody></table>`;
   },
 };
 
-function escape(s: string): string {
+function htmlEscape(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

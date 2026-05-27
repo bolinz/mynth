@@ -1,5 +1,5 @@
 import type { LLMProvider } from '../llm/LLMProvider.ts';
-import type { View, Interaction } from '../meta/ViewRenderer.ts';
+import type { Interaction, View } from '../meta/ViewRenderer.ts';
 
 export interface AgentResponse {
   text: string;

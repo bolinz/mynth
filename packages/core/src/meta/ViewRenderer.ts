@@ -46,9 +46,7 @@ export class RendererRegistry {
   }
 
   buildPromptDescription(): string {
-    const lines = this.getAll().map(
-      (r) => `- "${r.type}": ${r.description}`,
-    );
+    const lines = this.getAll().map((r) => `- "${r.type}": ${r.description}`);
     return `Available view types:\n${lines.join('\n')}`;
   }
 }

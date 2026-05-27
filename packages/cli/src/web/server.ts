@@ -146,7 +146,9 @@ export function startWebServer(engine: CoreEngine, port = 3000): void {
 
     if (url.pathname === '/api/views' && req.method === 'POST') {
       let body = '';
-      req.on('data', (chunk) => { body += chunk; });
+      req.on('data', (chunk) => {
+        body += chunk;
+      });
       req.on('end', async () => {
         try {
           const { type, data } = JSON.parse(body);
@@ -169,7 +171,9 @@ export function startWebServer(engine: CoreEngine, port = 3000): void {
 
     if (url.pathname === '/api/interaction' && req.method === 'POST') {
       let body = '';
-      req.on('data', (chunk) => { body += chunk; });
+      req.on('data', (chunk) => {
+        body += chunk;
+      });
       req.on('end', () => {
         try {
           const { interactionId, value } = JSON.parse(body);

@@ -10,10 +10,10 @@ export const rawHtmlRenderer: ViewRenderer = {
   },
   renderWeb(view) {
     const html = (view.data as { html: string }).html;
-    return `<iframe sandbox="allow-same-origin" srcdoc="${escape(html)}"></iframe>`;
+    return `<iframe sandbox="allow-same-origin" srcdoc="${htmlEscape(html)}"></iframe>`;
   },
 };
 
-function escape(s: string): string {
+function htmlEscape(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

@@ -326,7 +326,11 @@ export async function startTui(engine: CoreEngine): Promise<void> {
   unsubs.push(
     engine.eventBus.subscribe('agent.response', (_t, p) => {
       const e = p as any;
-      log('\u2192', `{cyan-fg}${e.agentId}{/} responded (${e.viewCount} views${e.hasInteraction ? ', awaiting input' : ''})`, '{cyan-fg}');
+      log(
+        '\u2192',
+        `{cyan-fg}${e.agentId}{/} responded (${e.viewCount} views${e.hasInteraction ? ', awaiting input' : ''})`,
+        '{cyan-fg}',
+      );
       if (e.viewCount > 0) {
         chainPanel.pushLine(`  {cyan-fg}Agent ${e.agentId} produced ${e.viewCount} view(s){/}`);
         chainPanel.setScrollPerc(100);

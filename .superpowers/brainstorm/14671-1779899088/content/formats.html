@@ -1,0 +1,40 @@
+<h2>哪些富内容格式最重要？</h2>
+<p class="subtitle">可以多选，先关注最重要的</p>
+
+<div class="options" data-multiselect>
+  <div class="option" data-choice="table" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>表格</h3>
+      <p>Agent 输出结构化数据表格，TUI 中以 ASCII 表渲染，Web 中以 HTML table 渲染</p>
+    </div>
+  </div>
+  <div class="option" data-choice="diff" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>文件差异 (diff)</h3>
+      <p>代码变更的增删对比展示，TUI 中用颜色标记，Web 中语法高亮</p>
+    </div>
+  </div>
+  <div class="option" data-choice="form" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>交互表单</h3>
+      <p>Agent 输出表单供用户填写（输入框、下拉选择、复选框），提交后 Agent 继续执行</p>
+    </div>
+  </div>
+  <div class="option" data-choice="decision" onclick="toggleSelect(this)">
+    <div class="letter">D</div>
+    <div class="content">
+      <h3>决策选择</h3>
+      <p>Agent 输出多个选项供用户选择，类似于 HITL 但更轻量、更频繁</p>
+    </div>
+  </div>
+  <div class="option" data-choice="progress" onclick="toggleSelect(this)">
+    <div class="letter">E</div>
+    <div class="content">
+      <h3>进度/状态指示</h3>
+      <p>长时间任务中展示进度条、阶段状态、剩余步骤预估</p>
+    </div>
+  </div>
+</div>

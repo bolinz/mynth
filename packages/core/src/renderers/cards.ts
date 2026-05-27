@@ -5,28 +5,35 @@ export const cardsRenderer: ViewRenderer = {
   type: 'cards',
   description: 'Cards list. data: { items: { title, description?, action? }[] }',
   schema: z.object({
-    items: z.array(z.object({
-      title: z.string(),
-      description: z.string().optional(),
-      action: z.string().optional(),
-    })),
+    items: z.array(
+      z.object({
+        title: z.string(),
+        description: z.string().optional(),
+        action: z.string().optional(),
+      }),
+    ),
   }),
   renderTUI(view) {
     const { items } = view.data as any;
-    return items.map((item: any) =>
-      `  ${item.title}${item.description ? ': ' + item.description : ''}${item.action ? ` [${item.action}]` : ''}`,
-    ).join('\n');
+    return items
+      .map(
+        (item: any) =>
+          `  ${item.title}${item.description ? ': ' + item.description : ''}${item.action ? ` [${item.action}]` : ''}`,
+      )
+      .join('\n');
   },
   renderWeb(view) {
     const { items } = view.data as any;
-    const cards = items.map((item: any) => {
-      const actionAttr = item.action ? ` data-action="${item.action}"` : '';
-      return `<div class="card"${actionAttr}><h4>${escape(item.title)}</h4>${item.description ? `<p>${escape(item.description)}</p>` : ''}</div>`;
-    }).join('');
+    const cards = items
+      .map((item: any) => {
+        const actionAttr = item.action ? ` data-action="${item.action}"` : '';
+        return `<div class="card"${actionAttr}><h4>${htmlEscape(item.title)}</h4>${item.description ? `<p>${htmlEscape(item.description)}</p>` : ''}</div>`;
+      })
+      .join('');
     return `<div class="cards">${cards}</div>`;
   },
 };
 
-function escape(s: string): string {
+function htmlEscape(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

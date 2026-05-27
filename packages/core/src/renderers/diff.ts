@@ -3,16 +3,19 @@ import type { ViewRenderer } from '../meta/ViewRenderer.ts';
 
 export const diffRenderer: ViewRenderer = {
   type: 'diff',
-  description: 'Code diff with hunks. data: { file: string, hunks: { oldStart, oldLines, newStart, newLines, content }[] }',
+  description:
+    'Code diff with hunks. data: { file: string, hunks: { oldStart, oldLines, newStart, newLines, content }[] }',
   schema: z.object({
     file: z.string(),
-    hunks: z.array(z.object({
-      oldStart: z.number(),
-      oldLines: z.number(),
-      newStart: z.number(),
-      newLines: z.number(),
-      content: z.array(z.string()),
-    })),
+    hunks: z.array(
+      z.object({
+        oldStart: z.number(),
+        oldLines: z.number(),
+        newStart: z.number(),
+        newLines: z.number(),
+        content: z.array(z.string()),
+      }),
+    ),
   }),
   renderTUI(view) {
     const { file, hunks } = view.data as { file: string; hunks: any[] };
@@ -29,12 +32,12 @@ export const diffRenderer: ViewRenderer = {
   },
   renderWeb(view) {
     const { file, hunks } = view.data as { file: string; hunks: any[] };
-    let html = `<div class="diff"><div class="diff-file">${escape(file)}</div>`;
+    let html = `<div class="diff"><div class="diff-file">${htmlEscape(file)}</div>`;
     for (const hunk of hunks) {
       html += `<div class="diff-hunk">@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@</div>`;
       for (const line of hunk.content) {
         const cls = line.startsWith('+') ? 'add' : line.startsWith('-') ? 'del' : '';
-        html += `<div class="diff-line ${cls}"><pre>${escape(line)}</pre></div>`;
+        html += `<div class="diff-line ${cls}"><pre>${htmlEscape(line)}</pre></div>`;
       }
     }
     html += '</div>';
@@ -42,6 +45,6 @@ export const diffRenderer: ViewRenderer = {
   },
 };
 
-function escape(s: string): string {
+function htmlEscape(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

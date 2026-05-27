@@ -3,7 +3,8 @@ import type { ViewRenderer } from '../meta/ViewRenderer.ts';
 
 export const flowchartRenderer: ViewRenderer = {
   type: 'flowchart',
-  description: 'Flowchart with nodes and edges. data: { nodes: { id, label }[], edges: { from, to, label? }[] }',
+  description:
+    'Flowchart with nodes and edges. data: { nodes: { id, label }[], edges: { from, to, label? }[] }',
   schema: z.object({
     nodes: z.array(z.object({ id: z.string(), label: z.string() })),
     edges: z.array(z.object({ from: z.string(), to: z.string(), label: z.string().optional() })),
@@ -22,14 +23,14 @@ export const flowchartRenderer: ViewRenderer = {
   },
   renderWeb(view) {
     const { nodes, edges } = view.data as any;
-    const nodeHtml = nodes.map((n: any) =>
-      `<div class="flow-node" id="node-${n.id}">${escape(n.label)}</div>`,
-    ).join('');
+    const nodeHtml = nodes
+      .map((n: any) => `<div class="flow-node" id="node-${n.id}">${htmlEscape(n.label)}</div>`)
+      .join('');
     const edgeJs = JSON.stringify(edges);
     return `<div class="flowchart" data-edges='${edgeJs}'>${nodeHtml}</div>`;
   },
 };
 
-function escape(s: string): string {
+function htmlEscape(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

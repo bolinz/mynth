@@ -18,13 +18,21 @@ import { InteractionManager } from '../meta/InteractionManager.ts';
 import { Intervener } from '../meta/Intervener.ts';
 import { Observer } from '../meta/Observer.ts';
 import { Orchestrator } from '../meta/Orchestrator.ts';
-import { RendererRegistry } from '../meta/ViewRenderer.ts';
-import { markdownRenderer, tableRenderer, diffRenderer, flowchartRenderer, chartRenderer, cardsRenderer, rawHtmlRenderer } from '../renderers/index.ts';
 import { Tracer } from '../meta/Tracer.ts';
+import { RendererRegistry } from '../meta/ViewRenderer.ts';
 import { LevelDBAdapter } from '../persistence/LevelDBAdapter.ts';
 import type { Persistence } from '../persistence/Persistence.ts';
 import { StateStore } from '../persistence/StateStore.ts';
 import { PromptRegistry } from '../prompt/PromptRegistry.ts';
+import {
+  cardsRenderer,
+  chartRenderer,
+  diffRenderer,
+  flowchartRenderer,
+  markdownRenderer,
+  rawHtmlRenderer,
+  tableRenderer,
+} from '../renderers/index.ts';
 import { Scheduler } from '../scheduler/Scheduler.ts';
 import { GracefulShutdown } from './GracefulShutdown.ts';
 
