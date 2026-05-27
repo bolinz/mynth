@@ -59,6 +59,7 @@ export class CoreEngine {
   shutdown!: GracefulShutdown;
   degradation!: DegradationMonitor;
   hitlManager!: HITLManager;
+  private evictTimer?: ReturnType<typeof setInterval>;
 
   get eventBus(): EventBus {
     return this.bus as unknown as EventBus;
@@ -140,12 +141,23 @@ export class CoreEngine {
     });
     this.degradation = new DegradationMonitor(this.eventBus);
 
+    this.evictTimer = setInterval(() => {
+      const evicted = this.pool.evictIdle();
+      if (evicted > 0) {
+        this.bus?.publish('intervention.executed', {
+          type: 'warn',
+          reason: `Evicted ${evicted} idle agents from warm pool`,
+        });
+      }
+    }, 30000);
+
     this.registerDefaultAgents();
     this.running = true;
   }
 
   async stop(): Promise<void> {
     this.running = false;
+    if (this.evictTimer) clearInterval(this.evictTimer);
     await this.shutdown.shutdown();
   }
 
@@ -166,6 +178,19 @@ export class CoreEngine {
     });
 
     const analysis = await this.orchestrator.analyze({ id: taskId, description, priority: 1 });
+
+    const predicted = this.orchestrator.predictNext(analysis.capabilities);
+    for (const cap of predicted) {
+      const existing = this.pool.acquire(cap as any);
+      if (!existing) {
+        this.pool.createAgent(`warm-${cap}-${Date.now()}`, `Warm ${cap}`, [
+          { type: cap as any, level: 5, confidence: 0.5 },
+        ]);
+      } else {
+        this.pool.release(existing);
+      }
+    }
+
     const taskContext = await this.orchestrator.initializeChain(
       {
         id: taskId,
