@@ -16,7 +16,7 @@ export async function startTui(engine: CoreEngine): Promise<void> {
     width: '100%',
     height: 1,
     content:
-      ' {bold}Mynth TUI{/bold}  {cyan-fg}v0.1.0{/}  |  {green-fg}q{/} quit  {green-fg}Enter{/} run  {green-fg}Esc{/} cancel  {green-fg}↑↓{/} history  {green-fg}Ctrl+L{/} clear  {green-fg}//help{/} commands',
+      ' {bold}Mynth TUI{/bold}  {cyan-fg}v0.1.0{/}  |  {green-fg}q{/} quit  {green-fg}t{/} tree  {green-fg}Enter{/} run  {green-fg}Esc{/} cancel  {green-fg}↑↓{/} history  {green-fg}Ctrl+L{/} clear  {green-fg}//help{/} commands',
     style: { fg: 'white', bg: 17 },
   });
 
@@ -55,6 +55,20 @@ export async function startTui(engine: CoreEngine): Promise<void> {
     scrollable: true,
     alwaysScroll: true,
     tags: true,
+  });
+
+  const treePanel = blessed.box({
+    top: 1,
+    left: 0,
+    width: '100%',
+    height: '83%',
+    label: ' {bold}Task Tree{/bold} ',
+    border: { type: 'line' },
+    style: { border: { fg: 129 }, label: { fg: 'white' } },
+    scrollable: true,
+    alwaysScroll: true,
+    tags: true,
+    hidden: true,
   });
 
   const logPanel = blessed.box({
@@ -106,11 +120,13 @@ export async function startTui(engine: CoreEngine): Promise<void> {
   screen.append(agentPanel);
   screen.append(statsPanel);
   screen.append(chainPanel);
+  screen.append(treePanel);
   screen.append(logPanel);
   screen.append(approvalPanel);
   screen.append(statusBar);
   screen.append(input);
 
+  let showTreePanel = false;
   let taskCount = 0;
   let hopCount = 0;
   let pendingApprovals = 0;
@@ -238,6 +254,65 @@ export async function startTui(engine: CoreEngine): Promise<void> {
     screen.render();
   }
 
+  function renderTree(): void {
+    const tree = engine.scheduler.getTree();
+    if (tree.length === 0) {
+      treePanel.setContent('  {gray-fg}No tasks.{/}');
+      screen.render();
+      return;
+    }
+
+    const lines: string[] = [];
+
+    function renderNode(node: any, depth: number): void {
+      const prefix = '  ' + '  '.repeat(depth);
+      const typeIcon: Record<string, string> = {
+        mission: '{bold}{magenta-fg}\u25c8{/}',
+        quest: '{cyan-fg}\u25c6{/}',
+        task: '{white-fg}\u2022{/}',
+        urgent: '{bold}{red-fg}\u26a1{/}',
+        sidequest: '{yellow-fg}\u26a0{/}',
+      };
+      const icon = typeIcon[node.type ?? 'task'] ?? '{white-fg}\u2022{/}';
+
+      const statusIcon: Record<string, string> = {
+        running: '{green-fg}\u25cf{/}',
+        queued: '{gray-fg}\u25cb{/}',
+        completed: '{green-fg}\u2713{/}',
+        failed: '{red-fg}\u2717{/}',
+        paused: '{yellow-fg}\u23f8{/}',
+        blocked: '{gray-fg}\u23f3{/}',
+        pending_review: '{yellow-fg}?{/}',
+      };
+      const sIcon = statusIcon[node.status] ?? '{gray-fg}-{/}';
+
+      let line = `${prefix}${icon} ${node.description}`;
+      if (node.progress !== undefined && node.progress >= 0) {
+        line += ` {gray-fg}${node.progress}%{/}`;
+      }
+      if (node.type === 'mission' && node.id === engine.scheduler.tree.getActiveMission()?.id) {
+        line += ' {bold}{magenta-fg}[MAIN]{/}';
+      }
+      if (node.status === 'running') {
+        line += ' {green-fg}\u25c0{/}';
+      }
+      lines.push(`  ${sIcon} ${line}`);
+
+      for (const child of node.children ?? []) {
+        renderNode(child, depth + 1);
+      }
+    }
+
+    for (const node of tree) {
+      renderNode(node, 0);
+      lines.push('');
+    }
+
+    treePanel.setContent(lines.join('\n'));
+    treePanel.setScrollPerc(100);
+    screen.render();
+  }
+
   unsubs.push(
     engine.eventBus.subscribe('agent.state_changed', (_t, p) => {
       const e = p as any;
@@ -280,6 +355,12 @@ export async function startTui(engine: CoreEngine): Promise<void> {
       currentHopDetails = [];
       updateChainPanel([]);
       updateStats();
+    }),
+  );
+
+  unsubs.push(
+    engine.eventBus.subscribe('task.progress_changed', () => {
+      if (showTreePanel) renderTree();
     }),
   );
 
@@ -503,6 +584,19 @@ export async function startTui(engine: CoreEngine): Promise<void> {
     }
     input.setValue(commandHistory[historyIdx] ?? '');
     screen.render();
+  });
+
+  screen.key(['t'], () => {
+    showTreePanel = !showTreePanel;
+    if (showTreePanel) {
+      chainPanel.hide();
+      treePanel.show();
+      renderTree();
+    } else {
+      treePanel.hide();
+      chainPanel.show();
+      screen.render();
+    }
   });
 
   // Ctrl+L clear log
