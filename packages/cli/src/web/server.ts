@@ -6,7 +6,7 @@ import type { CoreEngine } from '@mynth/core';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-export function startWebServer(engine: CoreEngine, port = 3000): void {
+export function startWebServer(engine: CoreEngine, port = 3000): http.Server {
   const clients = new Set<http.ServerResponse>();
 
   // Subscribe to all EventBus events and broadcast to SSE clients
@@ -370,4 +370,6 @@ evtSource.addEventListener('task.submitted', () => loadTree());
     for (const u of unsubs) u();
     process.exit(0);
   });
+
+  return server;
 }
