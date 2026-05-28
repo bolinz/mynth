@@ -19,7 +19,15 @@ describe('TaskTypeRegistry', () => {
 
   it('should allow registering new types', () => {
     const reg = new TaskTypeRegistry();
-    reg.register({ type: 'recurring', label: '周期', icon: '↻', color: '#000', maxActive: 5, canHaveChildren: false, lifecycle: 'recurring' });
+    reg.register({
+      type: 'recurring',
+      label: '周期',
+      icon: '↻',
+      color: '#000',
+      maxActive: 5,
+      canHaveChildren: false,
+      lifecycle: 'recurring',
+    });
     expect(reg.get('recurring').type).toBe('recurring');
   });
 

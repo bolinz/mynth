@@ -9,9 +9,8 @@ export class TaskTreeManager {
   private tasks = new Map<string, Task>();
   private activeMissionId?: string;
   private typeRegistry = new TaskTypeRegistry();
-  private interruptStack: Array<{ interruptedTaskId: string; missionId: string; stack: string[] }> = [];
-
-  constructor() {}
+  private interruptStack: Array<{ interruptedTaskId: string; missionId: string; stack: string[] }> =
+    [];
 
   // --- Submission ---
 
@@ -76,7 +75,10 @@ export class TaskTreeManager {
 
   // --- Tree operations ---
 
-  pushSubTask(parentId: string, subTask: Partial<Task> & { id: string; description: string }): Task {
+  pushSubTask(
+    parentId: string,
+    subTask: Partial<Task> & { id: string; description: string },
+  ): Task {
     subTask.parentId = parentId;
     const task = this.submitTask(subTask);
 
@@ -165,7 +167,10 @@ export class TaskTreeManager {
 
   // --- Interrupt / Resume ---
 
-  interrupt(currentTaskId: string, urgentTask: Partial<Task> & { id: string; description: string }): void {
+  interrupt(
+    currentTaskId: string,
+    urgentTask: Partial<Task> & { id: string; description: string },
+  ): void {
     const current = this.tasks.get(currentTaskId);
     if (!current) return;
 
@@ -200,22 +205,29 @@ export class TaskTreeManager {
 
   // --- Deviation Detection ---
 
-  detectDeviation(description: string, _inferCapabilities?: (desc: string) => string[]): { isDeviation: boolean; similarity: number } {
+  detectDeviation(
+    description: string,
+    _inferCapabilities?: (desc: string) => string[],
+  ): { isDeviation: boolean; similarity: number } {
     const mission = this.getActiveMission();
     if (!mission) return { isDeviation: false, similarity: 1 };
 
     // Simple keyword-based similarity (Jaccard)
-    const inferFn = _inferCapabilities ?? ((desc: string) => {
-      const codeWords = ['implement', 'write', 'code', 'function', 'api', 'build'];
-      const words = desc.toLowerCase().split(/[\s,]+/);
-      return codeWords.filter((w) => words.includes(w));
-    });
+    const inferFn =
+      _inferCapabilities ??
+      ((desc: string) => {
+        const codeWords = ['implement', 'write', 'code', 'function', 'api', 'build'];
+        const words = desc.toLowerCase().split(/[\s,]+/);
+        return codeWords.filter((w) => words.includes(w));
+      });
 
     const newCaps = inferFn(description);
     const missionCaps = inferFn(mission.description);
 
-    if (newCaps.length === 0 && missionCaps.length === 0) return { isDeviation: false, similarity: 1 };
-    if (newCaps.length === 0 || missionCaps.length === 0) return { isDeviation: true, similarity: 0 };
+    if (newCaps.length === 0 && missionCaps.length === 0)
+      return { isDeviation: false, similarity: 1 };
+    if (newCaps.length === 0 || missionCaps.length === 0)
+      return { isDeviation: true, similarity: 0 };
 
     const intersection = newCaps.filter((c) => missionCaps.includes(c)).length;
     const union = new Set([...newCaps, ...missionCaps]).size;

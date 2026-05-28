@@ -28,7 +28,7 @@ export class TaskTypeRegistry {
       label: '次级任务',
       icon: '\u25c6',
       color: '#3b82f6',
-      maxActive: Infinity,
+      maxActive: Number.POSITIVE_INFINITY,
       canHaveChildren: true,
       lifecycle: 'normal',
     });
@@ -37,7 +37,7 @@ export class TaskTypeRegistry {
       label: '任务',
       icon: '\u2022',
       color: '#e2e8f0',
-      maxActive: Infinity,
+      maxActive: Number.POSITIVE_INFINITY,
       canHaveChildren: false,
       lifecycle: 'normal',
     });
@@ -46,7 +46,7 @@ export class TaskTypeRegistry {
       label: '紧急任务',
       icon: '\u26a1',
       color: '#ef4444',
-      maxActive: Infinity,
+      maxActive: Number.POSITIVE_INFINITY,
       canHaveChildren: true,
       lifecycle: 'normal',
     });
@@ -55,7 +55,7 @@ export class TaskTypeRegistry {
       label: '偏离任务',
       icon: '\u26a0',
       color: '#eab308',
-      maxActive: Infinity,
+      maxActive: Number.POSITIVE_INFINITY,
       canHaveChildren: false,
       lifecycle: 'normal',
     });
