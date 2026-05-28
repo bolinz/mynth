@@ -25,58 +25,78 @@ Without an API key, agents fall back to simulated execution (no real LLM calls).
 
 ## CLI Commands
 
+```bash
+mynth run "task"             # Run chain transfer
+mynth status                 # Agent pool status
+mynth list                   # List tasks
+mynth history                # Persisted task history
+mynth logs <taskId>          # View hop details for a task
+mynth stop <taskId>          # Cancel a task
+mynth trace [taskId]         # Distributed tracing
+mynth approve <id>           # Approve a HITL request
+mynth pending                # List pending approvals
+mynth init <project>         # Scaffold a new project
+mynth tui                    # Terminal UI
+mynth ui                     # Web UI (http://localhost:3000)
+```
+
 ### Run a task (chain transfer)
 
 ```bash
 mynth run "implement a login form with validation"
 ```
 
-The Orchestrator analyzes the task, infers needed capabilities, then agents autonomously pass the task along a chain:
+The Orchestrator analyzes the task, infers needed capabilities from 40+ keywords across 8 types, then agents autonomously pass the task along a chain:
 
 ```
 reasoning → codegen → review → complete
 ```
 
-### View system status
+Events (agent state changes, hop transfers, anomalies, interventions) are streamed to the console in real-time.
+
+### Distributed tracing
 
 ```bash
-mynth status
-# Shows agent pool: agent names, states, capabilities
+mynth trace                  # All spans
+mynth trace task_123         # Filter by task ID
+# Shows span tree: hop.* and llm.* spans with timing
 ```
 
-### List tasks
+### HITL approval
 
 ```bash
-mynth list
-# Shows task IDs, statuses, ages
+mynth approve hitl_...       # Approve a pending request
+mynth approve hitl_... --reject  # Reject
+mynth approve hitl_... --note "needs more info"  # With note
+mynth pending                 # List all pending approvals
 ```
 
-### View persisted history
+## Task Tree System
 
-```bash
-mynth history
-# Shows all tasks and agents persisted to LevelDB (~/.mynth/data)
-```
+Tasks are organized in a hierarchical tree with 5 built-in types:
 
-### View task hop details
+| Type | Icon | Purpose |
+|------|------|---------|
+| Mission | ◈ | Top-level goal, auto-archives on new mission |
+| Quest | ◆ | Sub-goal within a mission |
+| Task | • | Atomic unit of work |
+| Urgent | ⚡ | Interrupts current chain, saved context |
+| SideQuest | ⚠ | Deviation detected, low priority |
 
-```bash
-mynth logs task_1779340000000
-# Shows each hop: fromAgent → toAgent, duration
-```
+### Progress tracking
+- Leaf tasks: progress = -1 (hidden)
+- Parent tasks: progress = (completed / total children) × 100
+- Progress is zero-cost — no LLM call needed
 
-### Cancel a task
+### Interrupt / Resume
+- Urgent tasks can interrupt the current chain
+- Context (parent chain, mission) is saved to a 4-slot stack
+- `resume()` restores the interrupted task
 
-```bash
-mynth stop task_1779340000000
-```
-
-### Scaffold a new project
-
-```bash
-mynth init my-project
-# Creates my-project/ with mynth.config.json, src/index.ts, data/
-```
+### Deviation detection
+- Uses Jaccard similarity on inferred capabilities
+- Threshold < 0.3 → flagged as sidequest
+- Prevents mission drift during task execution
 
 ## TUI (Terminal UI)
 
@@ -85,24 +105,40 @@ mynth         # Launch TUI (default)
 mynth tui     # Explicit launch
 ```
 
-**Keyboard shortcuts:**
+### Keyboard shortcuts
 
 | Key | Action |
 |-----|--------|
-| `Enter` | Submit task |
-| `↑` `↓` | Command history |
-| `Esc` `c` | Cancel running task |
+| `Enter` | Submit a task (type any text) |
+| `↑` `↓` | Command history navigation |
+| `t` | Toggle task tree panel |
+| `a` | Approve first pending HITL request |
+| `r` | Reject first pending HITL request |
+| `Esc` / `c` | Cancel running task |
 | `Ctrl+L` | Clear event log |
-| `q` | Quit |
+| `q` / `Ctrl+C` | Quit |
 
-**REPL commands** (prefix with `/`):
+### REPL commands (prefix with `/`)
 
 | Command | Description |
 |---------|-------------|
-| `/status` | Show agent pool |
-| `/list` | List tasks |
-| `/logs <id>` | View hop details |
-| `/help` | Show commands |
+| `/status` | Show agent pool with states and capabilities |
+| `/list` | List all tasks |
+| `/logs <taskId>` | View hop-chain with durations |
+| `/views` | Show registered renderers |
+| `/pending` | List pending approvals |
+| `/help` | Show all commands |
+
+### Panels
+
+| Panel | Content |
+|-------|---------|
+| Agents (left) | Agent names, states (● idle / ● working / ▶ transferring), capabilities |
+| System (top right) | Task count, hop count, agent count, degradation level |
+| Chain (center right) | Flow visualization: agent → agent transfers with timing |
+| Task Tree (toggle `t`) | Hierarchical tree: Mission ◆ Quest • Task ⚡ Urgent ⚠ SideQuest |
+| Events (bottom left) | Real-time event log with timestamps |
+| Approvals (bottom right) | Pending HITL approval requests |
 
 ## Web UI
 
@@ -110,31 +146,100 @@ mynth tui     # Explicit launch
 mynth ui     # Launch at http://localhost:3000
 ```
 
-- **Agent Pool panel** — shows all agents with colored status dots (green=working, gray=idle)
-- **System stats** — task count, hop count, agent count
-- **Chain visualization** — flow chart showing agent transfers
-- **Event log** — real-time events via Server-Sent Events
-- **Task detail** — click any task ID to view hop chain with durations
-- **Stop button** — cancel running task
+### Pages
+
+| Route | Content |
+|-------|---------|
+| `/` | Dashboard: agent pool, system stats, chain viz, event log |
+| `/tree` | Task tree board: nested hierarchy, progress bars, path breadcrumbs |
+| `/tasks` | Task JSON |
+| `/status` | Agent pool JSON |
+| `/pending-approvals` | Pending HITL requests |
+| `/run` (POST) | Execute a task via API |
+| `/approve` (POST) | Approve/reject HITL requests |
+| `/checkpoints?taskId=` | Hop records for a task |
+| `/events` | SSE stream for live updates |
+
+### Live updates
+
+The Web UI uses Server-Sent Events (`/events`) to stream:
+
+- `agent.state_changed` — agent transitions
+- `hop.recorded` — chain transfer hops
+- `anomaly.detected` — meta-layer anomalies
+- `intervention.executed` — automated interventions
+- `task.submitted` / `task.completed` — task lifecycle
+- `task.progress_changed` — tree progress updates
+- `hitl.requested` / `hitl.resolved` — approval workflow
+- `system.degradation_changed` — health status
+- `agent.response` — LLM agent output
+
+## Multi-Tenant
+
+Mynth supports multi-tenant isolation via `TenantContext`:
+
+```typescript
+import { StateStore } from '@mynth/core';
+
+const store = new StateStore(db, { tenantId: 'acme-corp' });
+```
+
+All StateStore keys are prefixed with `tenant:<tenantId>:` for complete data isolation between tenants within the same LevelDB instance.
+
+## Distributed Tracing
+
+The Tracer records spans for each hop and LLM call:
+
+```typescript
+const tracer = new Tracer();
+const span = tracer.startSpan('hop.codegen', 'task-123');
+// ... work ...
+tracer.endSpan(span.spanId, { agent: 'coder', duration: 150 });
+```
+
+View traces via CLI:
+```bash
+mynth trace task_123
+# Output:
+#   abc123def456  hop.reasoning     150ms    {"agent":"reasoner"}
+#     def456abc78  llm.reasoning    120ms
+```
+
+## Interaction Protocol
+
+Agents can produce rich responses using 7 built-in renderers:
+
+| Renderer | Description | TUI | Web |
+|----------|-------------|-----|-----|
+| `markdown` | Formatted text with HTML escaping | Plain text | HTML |
+| `table` | Tabular data | ASCII grid | `<table>` |
+| `cards` | Interactive cards | Card list | Cards with data-actions |
+| `diff` | Code diffs with hunks | Colored diff | Syntax-highlighted |
+| `flowchart` | Node/edge diagrams | ASCII nodes → edges | Data attributes for JS |
+| `chart` | Bar/line/pie charts | Text values | Data attributes |
+| `raw_html` | Raw HTML (sanitized) | Browser hint | `<iframe>` |
 
 ## SDK Usage
 
 ### In-process (embed mynth in your app)
 
 ```typescript
-import { CoreEngine, InProcessClient } from '@mynth/core';
+import { CoreEngine } from '@mynth/core';
 
-const engine = new CoreEngine({ dbPath: './data' });
+const engine = new CoreEngine({
+  dbPath: './data',
+  maxHops: 10,
+  agents: [
+    { id: 'reasoner', name: 'Reasoner',
+      capabilities: [{ type: 'reasoning', level: 8, confidence: 0.9 }] },
+    { id: 'coder', name: 'Coder',
+      capabilities: [{ type: 'codegen', level: 8, confidence: 0.85 }] },
+  ],
+});
 await engine.start();
 
-const client = new InProcessClient(engine);
-const result = await client.run('write a function');
+const result = await engine.executeTask('write a function');
 console.log(result); // { taskId, status, hops }
-
-// Subscribe to events
-client.subscribe('hop.recorded', (topic, payload) => {
-  console.log(`${payload.from} → ${payload.to}`);
-});
 
 await engine.stop();
 ```
@@ -163,12 +268,17 @@ const tasks = await client.tasks();
       "id": "reasoner",
       "name": "Reasoner",
       "capabilities": [{ "type": "reasoning", "level": 8, "confidence": 0.9 }]
+    },
+    {
+      "id": "coder",
+      "name": "Coder",
+      "capabilities": [{ "type": "codegen", "level": 8, "confidence": 0.85 }]
     }
   ]
 }
 ```
 
-Validated with Zod schema on engine start.
+Validated with Zod schema on engine start. Snapshots can be saved and restored via ConfigManager.
 
 ### Available capability types
 
@@ -182,6 +292,49 @@ Validated with Zod schema on engine start.
 | creative | design, create, generate, prototype, ui, ux |
 | math | calculate, compute, math, formula |
 | synthesis | summarize, synthesize, combine, report |
+| coordination | coordinate, assign, delegate, manage |
+| critique | critique, evaluate, assess, benchmark |
+
+### Capability Router
+
+Use the LLM-powered capability router for smarter agent selection:
+
+```json
+{
+  "capabilityRouter": {
+    "provider": "claude-sonnet",
+    "strategy": "llm_boost"
+  }
+}
+```
+
+## Examples
+
+```bash
+# Simple agent lifecycle
+pnpm --filter @mynth/examples simple
+
+# Multi-agent collaboration chain
+pnpm --filter @mynth/examples collab
+
+# Task tree system (mission/quest/task)
+pnpm --filter @mynth/examples tree
+
+# Multi-tenant isolation
+pnpm --filter @mynth/examples tenant
+
+# Standalone Web UI server
+pnpm --filter @mynth/examples web
+```
+
+## Testing
+
+```bash
+pnpm test                 # 379 tests (unit + integration)
+pnpm bench                # Performance benchmarks
+pnpm run lint             # Biome check
+pnpm test -- --coverage   # With coverage report
+```
 
 ## Performance Benchmarks
 
@@ -189,6 +342,5 @@ Validated with Zod schema on engine start.
 |--------|--------|--------|
 | Chain transfer (single hop) | 21ms | <100ms |
 | Message queue throughput | 520K msg/s | >10K |
-| Task scheduling | 6ms/1K | <10ms |
-
-Run benchmarks: `pnpm test bench`
+| Task scheduling (1K tasks) | 6ms | <10ms |
+| Vector search (10K × 128d) | 62ms | Phase 1 OK |

@@ -38,9 +38,11 @@ export class ConfigManager {
     return EngineConfigSchema.parse({});
   }
 
+  private snapIdCounter = 0;
+
   async saveSnapshot(config: Record<string, unknown>, label?: string): Promise<ConfigSnapshot> {
     const snapshot: ConfigSnapshot = {
-      id: `cfg_${Date.now()}`,
+      id: `cfg_${Date.now()}_${++this.snapIdCounter}`,
       timestamp: Date.now(),
       config,
       label,
