@@ -1,14 +1,18 @@
 {
   "name": "@mynth/examples",
-  "version": "0.0.1",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
     "simple": "tsx src/simple-agent.ts",
-    "collab": "tsx src/collaboration.ts"
+    "collab": "tsx src/collaboration.ts",
+    "tree": "tsx src/task-tree.ts",
+    "tenant": "tsx src/multi-tenant.ts",
+    "web": "tsx src/web-ui.ts"
   },
   "dependencies": {
     "@mynth/core": "workspace:*",
+    "@mynth/cli": "workspace:*",
     "@mynth/sdk": "workspace:*",
     "tsx": "^4.19.0"
   },

@@ -1,7 +1,6 @@
 {
   "name": "@mynth/cli",
-  "version": "0.0.1",
-  "private": true,
+  "version": "0.3.0",
   "type": "module",
   "bin": {
     "mynth": "./dist/index.js"

@@ -1,6 +1,10 @@
 {
   "name": "mynth",
-  "private": true,
+  "version": "0.3.0",
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
@@ -9,7 +13,8 @@
     "test:watch": "vitest",
     "lint": "biome check .",
     "lint:fix": "biome check --apply .",
-    "format": "biome format --write ."
+    "format": "biome format --write .",
+    "release": "git tag v$(node -p \"require('./package.json').version\") && git push --tags && npm publish"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

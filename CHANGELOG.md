@@ -1,0 +1,43 @@
+# Changelog
+
+## 0.3.0 (2026-05-29)
+
+### Features
+- **Task tree system**: Mission/Quest/Task/Urgent/SideQuest types with hierarchical decomposition, interrupt/resume, deviation detection, zero-cost progress tracking
+- **Interaction protocol**: 7 built-in renderers (markdown, table, cards, diff, flowchart, chart, raw_html), InteractionManager for structured agent↔user dialogs
+- **Multi-tenant**: TenantContext prefixes all StateStore keys, full data isolation
+- **Distributed tracing**: Tracer with span/parent spans, CLI trace command
+- **HITL approval**: Human-in-the-loop with Guard rules, CLI/TUI/Web UI support
+- **LLM structured output**: PromptSchema with extractJSON/validateJSON
+- **Degradation framework**: Health monitoring for LLM/memory/messaging/agent-pool
+- **Resilience**: Deadlock detection, ConfigManager snapshots, backpressure, WAL, graceful shutdown
+- **Cold start + L3 backup**: WarmPool→AgentPool, path prediction, PrivateMemory backup/restore
+- **Web UI**: Task tree board at /tree with SSE live updates
+
+### Testing
+- 379 tests across 65 test files (unit + integration + bench)
+- 100% coverage of all 69 logic-bearing source files
+- Integration tests: CoreEngine lifecycle, memory consistency, multi-tenant, web server, TUI
+- Benchmarks: chain transfer (21ms), message queue (520K msg/s), task scheduling (6ms), vector search (62ms)
+
+### CI
+- Matrix build (Node 20 + 22), coverage thresholds (90%+), codecov upload
+- Benchmarks run in CI
+
+## 0.2.0 (2026-05-21)
+
+### Features
+- LLM integration: Anthropic + OpenAI providers with retry, fallback, circuit-breaking
+- ReAct loop (Think-Act-Observe) for agent execution
+- BudgetTracker for token cost control
+- CoreEngine with full subsystem wiring
+- CLI with run/status/list/history/tui/ui commands
+
+## 0.1.0 (2026-05-15)
+
+### Features
+- Initial release: chain transfer, meta-layer (Observer + Intervener), agent pool
+- EventBus with 8 topics, MemoryQueue point-to-point
+- LevelDB persistence, StateStore
+- Virtual SubAgents with parallel execution
+- Basic CLI and TUI
