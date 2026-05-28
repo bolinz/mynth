@@ -170,6 +170,92 @@ describe('Web server routes', () => {
     expect(res.body).toContain('/api/tree');
   });
 
+  it('GET /events should stream SSE connected event', async () => {
+    const res = await new Promise<http.IncomingMessage>((resolve, reject) => {
+      const req = http.get(`${base}/events`, (res) => resolve(res));
+      req.on('error', reject);
+    });
+    // SSE sends immediate 'connected' event
+    await new Promise<void>((resolve) => {
+      let data = '';
+      res.on('data', (chunk) => {
+        data += chunk.toString();
+        if (data.includes('event: connected')) {
+          res.destroy();
+          resolve();
+        }
+      });
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['content-type']).toContain('text/event-stream');
+  });
+
+  it('POST /api/views should render a view', async () => {
+    const res = await postUrl(`${base}/api/views`, {
+      type: 'markdown',
+      data: { text: 'Hello **world**' },
+    });
+    expect(res.status).toBe(200);
+    expect(res.body).toContain('Hello');
+  });
+
+  it('POST /api/views should return 404 for unknown type', async () => {
+    const res = await postUrl(`${base}/api/views`, {
+      type: 'nonexistent',
+      data: {},
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it('POST /api/interaction should respond to an interaction', async () => {
+    engine.interactionManager.submit({
+      id: 'interact-1',
+      agentId: 'a',
+      taskId: 't1',
+      prompt: 'confirm?',
+      options: ['yes', 'no'],
+    });
+    const res = await postUrl(`${base}/api/interaction`, {
+      interactionId: 'interact-1',
+      value: 'yes',
+    });
+    expect(res.status).toBe(200);
+    expect(JSON.parse(res.body)).toEqual({ success: true });
+  });
+
+  it('POST /api/tree/move should move a task to new parent', async () => {
+    // Create a tree structure first
+    const tree = engine.getScheduler().tree;
+    tree.submitTask({ id: 'parent-1', description: 'parent', type: 'quest', priority: 1 });
+    tree.submitTask({
+      id: 'child-1',
+      description: 'child',
+      type: 'task',
+      priority: 1,
+      parentId: 'parent-1',
+    });
+    tree.submitTask({ id: 'new-parent', description: 'new parent', type: 'quest', priority: 2 });
+
+    const res = await postUrl(`${base}/api/tree/move`, {
+      taskId: 'child-1',
+      newParentId: 'new-parent',
+    });
+    expect(res.status).toBe(200);
+    expect(JSON.parse(res.body)).toEqual({ success: true });
+
+    // Verify move
+    const movedTask = tree.getTask('child-1');
+    expect(movedTask?.parentId).toBe('new-parent');
+  });
+
+  it('POST /api/tree/move should return 404 for unknown task', async () => {
+    const res = await postUrl(`${base}/api/tree/move`, {
+      taskId: 'nonexistent',
+      newParentId: 'parent-1',
+    });
+    expect(res.status).toBe(404);
+  });
+
   it('GET /nonexistent should return 404', async () => {
     const res = await fetchUrl(`${base}/nonexistent`);
     expect(res.status).toBe(404);
