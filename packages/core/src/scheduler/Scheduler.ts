@@ -1,12 +1,16 @@
 import type { Task, TaskContext, TaskStatus } from '@mynth/sdk';
 import { TaskQueue } from './TaskQueue.ts';
+import { TaskTreeManager } from './TaskTreeManager.ts';
+import type { TaskNode } from './TaskTreeManager.ts';
 
 export class Scheduler {
   private queue = new TaskQueue();
   private tasks = new Map<string, TaskContext>();
   private onTaskChange?: (taskId: string, status: TaskStatus) => void;
+  tree = new TaskTreeManager();
 
   async submit(task: Task): Promise<string> {
+    this.tree.submitTask({ ...task, id: task.id, type: task.type || 'task' });
     const ctx = this.queue.enqueue(task);
     this.tasks.set(ctx.taskId, ctx);
     return ctx.taskId;
@@ -52,5 +56,17 @@ export class Scheduler {
 
   private notify(taskId: string, status: TaskStatus): void {
     this.onTaskChange?.(taskId, status);
+  }
+
+  getTree(): TaskNode[] {
+    return this.tree.getTree();
+  }
+
+  getContextStack(taskId: string): Task[] {
+    return this.tree.getParentChain(taskId);
+  }
+
+  getTaskProgress(taskId: string): number {
+    return this.tree.getTask(taskId)?.progress ?? -1;
   }
 }

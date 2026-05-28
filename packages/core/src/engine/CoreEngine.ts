@@ -247,6 +247,14 @@ export class CoreEngine {
     );
     const result = await chain.startChain(taskContext, analysis.firstAgent);
 
+    // Update task progress via tree
+    this.scheduler.tree.updateStatus(taskId, result.status === 'complete' ? 'running' : 'failed');
+    this.scheduler.tree.updateProgress(taskId);
+    this.bus?.publish('task.progress_changed', {
+      taskId,
+      progress: this.scheduler.tree.getTask(taskId)?.progress ?? -1,
+    });
+
     for (const hop of result.hopHistory) {
       await this.stateStore.saveHop(taskId, hop);
     }
