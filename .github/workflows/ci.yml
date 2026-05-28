@@ -27,4 +27,13 @@ jobs:
 
       - run: pnpm test
 
+      - run: pnpm bench
+
       - run: pnpm run lint
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage/lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
