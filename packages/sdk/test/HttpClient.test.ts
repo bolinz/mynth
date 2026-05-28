@@ -1,39 +1,34 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { HttpClient } from '../src/client/HttpClient.ts';
 
 describe('HttpClient', () => {
-  beforeEach(() => {
-    vi.stubGlobal('fetch', vi.fn());
-  });
-
-  afterEach(() => {
-    vi.unstubGlobal('fetch');
-  });
-
   it('should construct with base URL', () => {
     const client = new HttpClient('http://localhost:3000');
     expect(client).toBeDefined();
   });
 
   it('should call run and return result', async () => {
-    const fetch = globalThis.fetch as ReturnType<typeof vi.fn>;
-    fetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({ taskId: 't1', status: 'complete', hops: 2 }),
-    });
+    let capturedUrl = '';
+    globalThis.fetch = ((url: string, _init?: any) => {
+      capturedUrl = url;
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ taskId: 't1', status: 'complete', hops: 2 }),
+      });
+    }) as any;
 
     const client = new HttpClient('http://localhost:3000');
     const result = await client.run('test task');
     expect(result.taskId).toBe('t1');
-    expect(result.status).toBe('complete');
+    expect(capturedUrl).toContain('/run');
   });
 
   it('should call status and return agents', async () => {
-    const fetch = globalThis.fetch as ReturnType<typeof vi.fn>;
-    fetch.mockResolvedValue({
-      ok: true,
-      json: async () => [{ id: 'agent-1', name: 'Agent 1', state: 'idle' }],
-    });
+    globalThis.fetch = (() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve([{ id: 'agent-1', name: 'Agent 1', state: 'idle' }]),
+      })) as any;
 
     const client = new HttpClient('http://localhost:3000');
     const agents = await client.status();
@@ -42,11 +37,11 @@ describe('HttpClient', () => {
   });
 
   it('should call tasks and return task list', async () => {
-    const fetch = globalThis.fetch as ReturnType<typeof vi.fn>;
-    fetch.mockResolvedValue({
-      ok: true,
-      json: async () => [{ taskId: 't1', description: 'test', status: 'running' }],
-    });
+    globalThis.fetch = (() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve([{ taskId: 't1', description: 'test', status: 'running' }]),
+      })) as any;
 
     const client = new HttpClient('http://localhost:3000');
     const tasks = await client.tasks();
@@ -55,8 +50,12 @@ describe('HttpClient', () => {
   });
 
   it('should throw on error response', async () => {
-    const fetch = globalThis.fetch as ReturnType<typeof vi.fn>;
-    fetch.mockResolvedValue({ ok: false, status: 500, text: async () => 'Server Error' });
+    globalThis.fetch = (() =>
+      Promise.resolve({
+        ok: false,
+        status: 500,
+        text: () => Promise.resolve('Server Error'),
+      })) as any;
 
     const client = new HttpClient('http://localhost:3000');
     await expect(client.run('test')).rejects.toThrow();

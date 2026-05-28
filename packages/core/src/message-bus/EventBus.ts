@@ -10,7 +10,12 @@ export type EventTopic =
   | 'hitl.requested'
   | 'hitl.resolved'
   | 'system.degradation_changed'
-  | 'agent.response';
+  | 'agent.response'
+  | 'task.forked'
+  | 'task.interrupted'
+  | 'task.resumed'
+  | 'task.deviation_detected'
+  | 'task.progress_changed';
 
 export interface AgentStateChangedEvent {
   agentId: string;
@@ -87,6 +92,34 @@ export interface DegradationChangedEvent {
   dimensions: Record<string, { health: string; reason?: string }>;
 }
 
+export interface TaskForkedEvent {
+  taskId: string;
+  parentId: string;
+  childId: string;
+}
+
+export interface TaskInterruptedEvent {
+  taskId: string;
+  interruptedBy: string;
+  contextSnapshot: unknown;
+}
+
+export interface TaskResumedEvent {
+  taskId: string;
+}
+
+export interface TaskDeviationDetectedEvent {
+  taskId: string;
+  similarity: number;
+  currentMission: string;
+}
+
+export interface TaskProgressChangedEvent {
+  taskId: string;
+  progress: number;
+  type?: string;
+}
+
 export type EventPayload =
   | AgentStateChangedEvent
   | TaskSubmittedEvent
@@ -99,7 +132,12 @@ export type EventPayload =
   | HITLRequestedEvent
   | HITLResolvedEvent
   | DegradationChangedEvent
-  | AgentResponseEvent;
+  | AgentResponseEvent
+  | TaskForkedEvent
+  | TaskInterruptedEvent
+  | TaskResumedEvent
+  | TaskDeviationDetectedEvent
+  | TaskProgressChangedEvent;
 
 export type EventHandler = (topic: EventTopic, payload: EventPayload) => void;
 

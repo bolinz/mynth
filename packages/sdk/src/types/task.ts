@@ -6,13 +6,32 @@ export type TaskStatus =
   | 'completed'
   | 'failed'
   | 'cancelled'
-  | 'rolled_back';
+  | 'rolled_back'
+  | 'pending_review'
+  | 'paused'
+  | 'blocked';
 
 export interface Task {
   id: string;
   description: string;
   priority: number;
   constraints?: HandoverConstraints;
+  type?: string;
+  parentId?: string;
+  childIds?: string[];
+  dependsOn?: string[];
+  tags?: string[];
+  progress?: number;
+  rootMissionId?: string;
+  isInterrupt?: boolean;
+  contextSnapshot?: {
+    interruptedTaskId: string;
+    stack: string[];
+  };
+  metadata?: Record<string, unknown>;
+  createdAt?: number;
+  startedAt?: number;
+  completedAt?: number;
 }
 
 export interface TaskContext {
@@ -26,6 +45,19 @@ export interface TaskContext {
   checkpoint?: Checkpoint;
   result?: unknown;
   createdAt: number;
+  type?: string;
+  parentId?: string;
+  childIds?: string[];
+  dependsOn?: string[];
+  tags?: string[];
+  progress?: number;
+  rootMissionId?: string;
+  isInterrupt?: boolean;
+  contextSnapshot?: {
+    interruptedTaskId: string;
+    stack: string[];
+  };
+  metadata?: Record<string, unknown>;
 }
 
 export interface HopRecord {
