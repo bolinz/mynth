@@ -31,12 +31,13 @@ export class StateStore {
   }
 
   async saveHop(taskId: string, hop: HopRecord): Promise<void> {
-    const key = this.k(`state:hop:${taskId}:${Date.now()}`);
-    await this.db.put(key, hop);
-
+    const key = this.k(`state:hop:${taskId}:${Date.now()}_${Math.random().toString(36).slice(2, 4)}`);
     const index = await this.getHopIndex(taskId);
     index.push(key);
-    await this.db.put(this.k(`state:index:hop:${taskId}`), index);
+    await this.db.batch([
+      { type: 'put', key, value: hop },
+      { type: 'put', key: this.k(`state:index:hop:${taskId}`), value: index },
+    ]);
   }
 
   async loadTaskHops(taskId: string): Promise<HopRecord[]> {
@@ -51,12 +52,15 @@ export class StateStore {
   }
 
   async saveTask(task: StoredTask): Promise<void> {
-    await this.db.put(this.k(`state:task:${task.taskId}`), task);
-
     const index: string[] = ((await this.db.get(this.k('state:index:tasks'))) as string[]) ?? [];
     if (!index.includes(task.taskId)) {
       index.push(task.taskId);
-      await this.db.put(this.k('state:index:tasks'), index);
+      await this.db.batch([
+        { type: 'put', key: this.k(`state:task:${task.taskId}`), value: task },
+        { type: 'put', key: this.k('state:index:tasks'), value: index },
+      ]);
+    } else {
+      await this.db.put(this.k(`state:task:${task.taskId}`), task);
     }
   }
 
@@ -71,12 +75,15 @@ export class StateStore {
   }
 
   async saveAgentConfig(config: StoredAgentConfig): Promise<void> {
-    await this.db.put(this.k(`state:agent:${config.id}`), config);
-
     const index: string[] = ((await this.db.get(this.k('state:index:agents'))) as string[]) ?? [];
     if (!index.includes(config.id)) {
       index.push(config.id);
-      await this.db.put(this.k('state:index:agents'), index);
+      await this.db.batch([
+        { type: 'put', key: this.k(`state:agent:${config.id}`), value: config },
+        { type: 'put', key: this.k('state:index:agents'), value: index },
+      ]);
+    } else {
+      await this.db.put(this.k(`state:agent:${config.id}`), config);
     }
   }
 

@@ -38,7 +38,7 @@ export class AnthropicProvider implements LLMProvider {
         inputTokens: json.usage?.input_tokens ?? 0,
         outputTokens: json.usage?.output_tokens ?? 0,
       },
-      finishReason: json.stop_reason === 'end_turn' ? 'stop' : 'length',
+      finishReason: json.stop_reason === 'end_turn' || json.stop_reason === 'stop_sequence' ? 'stop' : 'length',
     };
   }
 
@@ -60,7 +60,10 @@ export class AnthropicProvider implements LLMProvider {
       }),
     });
 
-    if (!res.ok) throw new Error(`Anthropic API error: ${res.status}`);
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`HTTP ${res.status}: ${text}`);
+    }
     const reader = res.body?.getReader();
     if (!reader) return;
 

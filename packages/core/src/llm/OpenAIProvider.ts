@@ -37,7 +37,7 @@ export class OpenAIProvider implements LLMProvider {
         inputTokens: json.usage?.prompt_tokens ?? 0,
         outputTokens: json.usage?.completion_tokens ?? 0,
       },
-      finishReason: json.choices[0]?.finish_reason === 'stop' ? 'stop' : 'length',
+      finishReason: json.choices[0]?.finish_reason === 'stop' || json.choices[0]?.finish_reason === 'tool_calls' ? 'stop' : 'length',
     };
   }
 
@@ -58,7 +58,10 @@ export class OpenAIProvider implements LLMProvider {
       }),
     });
 
-    if (!res.ok) throw new Error(`OpenAI API error: ${res.status}`);
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`HTTP ${res.status}: ${text}`);
+    }
     const reader = res.body?.getReader();
     if (!reader) return;
 

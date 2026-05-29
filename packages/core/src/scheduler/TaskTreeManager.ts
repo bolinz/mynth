@@ -23,7 +23,7 @@ export class TaskTreeManager {
     if (type === 'mission' && this.activeMissionId && behavior.autoArchiveOnNew) {
       const old = this.tasks.get(this.activeMissionId);
       if (old && old.status !== 'archived') {
-        old.status = 'archived' as any;
+        old.status = 'archived';
       }
     }
 
@@ -52,8 +52,11 @@ export class TaskTreeManager {
     // Link to parent
     if (input.parentId) {
       const parent = this.tasks.get(input.parentId);
-      if (parent && !parent.childIds!.includes(task.id)) {
-        parent.childIds!.push(task.id);
+      if (parent) {
+        parent.childIds = parent.childIds ?? [];
+        if (!parent.childIds.includes(task.id)) {
+          parent.childIds.push(task.id);
+        }
       }
     }
 
@@ -89,7 +92,7 @@ export class TaskTreeManager {
     // Pause parent
     const parent = this.tasks.get(parentId);
     if (parent && parent.status === 'running') {
-      parent.status = 'paused' as any;
+      parent.status = 'paused';
     }
 
     return task;
@@ -107,7 +110,7 @@ export class TaskTreeManager {
     const parentId = task.parentId;
     if (parentId) {
       const parent = this.tasks.get(parentId);
-      if (parent && parent.status === ('paused' as any)) {
+      if (parent && parent.status === 'paused') {
         parent.status = 'running';
       }
       return parentId;
@@ -151,18 +154,15 @@ export class TaskTreeManager {
     if (this.activeMissionId && this.activeMissionId !== missionId) {
       const current = this.tasks.get(this.activeMissionId);
       if (current && current.status !== 'completed' && current.status !== 'failed') {
-        current.status = 'paused' as any;
+        current.status = 'paused';
         if (!this.backLog.includes(this.activeMissionId)) {
           this.backLog.push(this.activeMissionId);
         }
       }
     }
 
-    // Activate new mission
     this.activeMissionId = missionId;
-    if (task.status === ('paused' as any) || task.status === 'queued') {
-      task.status = 'running';
-    }
+    task.status = 'running';
     return true;
   }
 
@@ -184,7 +184,7 @@ export class TaskTreeManager {
     if (this.activeMissionId && this.activeMissionId !== missionId) {
       const current = this.tasks.get(this.activeMissionId);
       if (current && current.status !== 'completed' && current.status !== 'failed') {
-        current.status = 'paused' as any;
+        current.status = 'paused';
         if (!this.backLog.includes(this.activeMissionId)) {
           this.backLog.push(this.activeMissionId);
         }
@@ -216,9 +216,9 @@ export class TaskTreeManager {
 
   private calcProgress(task: Task): number {
     // Leaf task: no progress data
-    if (task.childIds!.length === 0) return -1;
+    if ((task.childIds ?? []).length === 0) return -1;
 
-    const children = task.childIds!.map((id) => this.tasks.get(id)).filter(Boolean) as Task[];
+    const children = (task.childIds ?? []).map((id) => this.tasks.get(id)).filter(Boolean) as Task[];
     if (children.length === 0) return -1;
 
     const completed = children.filter((c) => c.status === 'completed').length;
@@ -228,7 +228,7 @@ export class TaskTreeManager {
   recalcAllProgress(): void {
     // Bottom-up: process leaves first
     const process = (task: Task): void => {
-      for (const childId of task.childIds!) {
+      for (const childId of task.childIds ?? []) {
         const child = this.tasks.get(childId);
         if (child) process(child);
       }
@@ -258,7 +258,7 @@ export class TaskTreeManager {
     });
 
     // Pause current chain
-    current.status = 'paused' as any;
+    current.status = 'paused';
 
     // Create urgent task
     urgentTask.type = 'urgent';

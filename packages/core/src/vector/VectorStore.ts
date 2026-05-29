@@ -28,7 +28,7 @@ export class VectorStore {
     }
     this.items.set(id, { id, vector, metadata });
     if (this.items.size >= this.rebuildThreshold) {
-      this.needsRebuild = true;
+      await this.rebuildIVF();
     }
   }
 
