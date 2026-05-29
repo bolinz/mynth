@@ -65,8 +65,8 @@ describe('MessageBus', () => {
     (bus as any).queue.enqueue = async () => {
       throw new Error('queue full');
     };
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    // Should not throw
     bus.send('consumer-1', {
       id: '1',
       type: 'msg',
@@ -75,8 +75,9 @@ describe('MessageBus', () => {
       payload: 'hello',
     });
 
-    // Wait for promise to settle
     await new Promise((r) => setTimeout(r, 50));
+    expect(spy).toHaveBeenCalledWith('[MessageBus] send failed:', expect.any(Error));
+    spy.mockRestore();
   });
 
   it('should clear all events and messages', () => {
