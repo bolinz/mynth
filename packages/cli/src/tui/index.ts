@@ -527,6 +527,32 @@ export async function startTui(engine: CoreEngine): Promise<void> {
         log('\u25b6', `views (${renderers.length} renderers)`, '{cyan-fg}');
         break;
       }
+      case 'backlog': {
+        const backlog = engine.scheduler.tree.getBacklog();
+        const lines = backlog.map((m) => `  {cyan-fg}${m.id}{/}  {gray-fg}${m.description}{/}`);
+        chainPanel.setContent(
+          `  {cyan-fg}/backlog{/}  {gray-fg}(${backlog.length} paused){/}\n\n${lines.length > 0 ? lines.join('\n') : '  {gray-fg}No paused missions.{/}'}`,
+        );
+        log('\u25b6', `backlog (${backlog.length} missions)`, '{cyan-fg}');
+        break;
+      }
+
+      case 'restore': {
+        const missionId = args[0];
+        if (!missionId) {
+          chainPanel.setContent('  {red-fg}Usage: /restore <missionId>{/}');
+          break;
+        }
+        const ok = engine.scheduler.tree.restoreFromBacklog(missionId);
+        if (ok) {
+          chainPanel.setContent(`  {green-fg}Restored mission: ${missionId}{/}`);
+          log('\u25b6', `Restored: ${missionId}`, '{green-fg}');
+        } else {
+          chainPanel.setContent(`  {red-fg}Not found in backlog: ${missionId}{/}`);
+        }
+        break;
+      }
+
       case 'switch': {
         const missionId = args[0];
         if (!missionId) {
@@ -553,7 +579,9 @@ export async function startTui(engine: CoreEngine): Promise<void> {
             '  {bold}/reject <id>{/}   Reject pending request\n' +
             '  {bold}/pending{/}       List pending approvals\n' +
             '  {bold}/views{/}         Show view renderer status\n' +
-            '  {bold}/switch <id>{/}  Switch active mission\n' +
+            '  {bold}/backlog{/}      List paused missions\n' +
+            '  {bold}/restore <id>{/}  Restore mission from backlog\n' +
+            '  {bold}/switch <id>{/}   Switch active mission\n' +
             '  {bold}/help{/}          This message\n' +
             '  {yellow-fg}Key: a{/} approve first  {yellow-fg}r{/} reject first\n\n' +
             '  {bold}<any text>{/}      Run a task through the chain',

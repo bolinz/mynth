@@ -70,6 +70,10 @@ export class TaskTreeManager {
       task.status = status;
       if (status === 'running') task.startedAt = Date.now();
       if (status === 'completed' || status === 'failed') task.completedAt = Date.now();
+      // Auto-resume backlog mission when active mission completes
+      if (status === 'completed' && task.type === 'mission' && taskId === this.activeMissionId) {
+        this.tryAutoResume();
+      }
     }
   }
 
@@ -131,21 +135,75 @@ export class TaskTreeManager {
     return this.activeMissionId ? this.tasks.get(this.activeMissionId) : undefined;
   }
 
+  private backLog: string[] = [];
+
   setActiveMission(missionId: string): boolean {
     const task = this.tasks.get(missionId);
     if (!task || task.type !== 'mission') return false;
 
-    // Auto-archive old mission
+    // Remove from backlog if already there (being activated)
+    const backlogIdx = this.backLog.indexOf(missionId);
+    if (backlogIdx !== -1) {
+      this.backLog.splice(backlogIdx, 1);
+    }
+
+    // Pause current active mission (push to backlog)
     if (this.activeMissionId && this.activeMissionId !== missionId) {
-      const old = this.tasks.get(this.activeMissionId);
-      if (old && old.status !== 'archived') {
-        old.status = 'archived' as any;
+      const current = this.tasks.get(this.activeMissionId);
+      if (current && current.status !== 'completed' && current.status !== 'failed') {
+        current.status = 'paused' as any;
+        if (!this.backLog.includes(this.activeMissionId)) {
+          this.backLog.push(this.activeMissionId);
+        }
+      }
+    }
+
+    // Activate new mission
+    this.activeMissionId = missionId;
+    if (task.status === ('paused' as any) || task.status === 'queued') {
+      task.status = 'running';
+    }
+    return true;
+  }
+
+  getBacklog(): Task[] {
+    return this.backLog.map((id) => this.tasks.get(id)).filter(Boolean) as Task[];
+  }
+
+  restoreFromBacklog(missionId: string): boolean {
+    const task = this.tasks.get(missionId);
+    if (!task || task.type !== 'mission') return false;
+
+    const idx = this.backLog.indexOf(missionId);
+    if (idx === -1) return false;
+
+    // Remove from backlog
+    this.backLog.splice(idx, 1);
+
+    // Pause current active mission
+    if (this.activeMissionId && this.activeMissionId !== missionId) {
+      const current = this.tasks.get(this.activeMissionId);
+      if (current && current.status !== 'completed' && current.status !== 'failed') {
+        current.status = 'paused' as any;
+        if (!this.backLog.includes(this.activeMissionId)) {
+          this.backLog.push(this.activeMissionId);
+        }
       }
     }
 
     this.activeMissionId = missionId;
     task.status = 'running';
     return true;
+  }
+
+  private tryAutoResume(): void {
+    if (this.backLog.length === 0) return;
+    const nextId = this.backLog.pop()!;
+    const next = this.tasks.get(nextId);
+    if (next) {
+      this.activeMissionId = nextId;
+      next.status = 'running';
+    }
   }
 
   // --- Progress ---

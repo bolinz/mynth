@@ -99,20 +99,23 @@ describe('TaskTreeManager', () => {
     expect(chain.map((t) => t.id)).toEqual(['m1', 'q1', 't1']);
   });
 
-  it('should set active mission', () => {
+  it('should set active mission and push old to backlog', () => {
     const mgr = new TaskTreeManager();
     mgr.submitTask({ id: 'm1', description: 'Mission 1', type: 'mission' });
     mgr.submitTask({ id: 'm2', description: 'Mission 2', type: 'mission' });
 
-    expect(mgr.getActiveMission()?.id).toBe('m2'); // auto-set to latest
+    expect(mgr.getActiveMission()?.id).toBe('m2');
+    mgr.getTask('m2')!.status = 'running' as any;
 
     const ok = mgr.setActiveMission('m1');
     expect(ok).toBe(true);
     expect(mgr.getActiveMission()?.id).toBe('m1');
 
-    // Old mission (m2) should be archived
-    const oldMission = mgr.getTask('m2');
-    expect(oldMission?.status).toBe('archived');
+    // m2 should be paused and in backlog
+    expect(mgr.getTask('m2')?.status).toBe('paused');
+    const backlog = mgr.getBacklog();
+    expect(backlog).toHaveLength(1);
+    expect(backlog[0].id).toBe('m2');
   });
 
   it('should return false for nonexistent task', () => {
@@ -124,5 +127,82 @@ describe('TaskTreeManager', () => {
     const mgr = new TaskTreeManager();
     mgr.submitTask({ id: 't1', description: 'Task', type: 'task' });
     expect(mgr.setActiveMission('t1')).toBe(false);
+  });
+
+  it('should auto-resume backlog when active mission completes', () => {
+    const mgr = new TaskTreeManager();
+    mgr.submitTask({ id: 'm1', description: 'Mission 1', type: 'mission' });
+    mgr.submitTask({ id: 'm2', description: 'Mission 2', type: 'mission' });
+    mgr.getTask('m2')!.status = 'running' as any;
+
+    mgr.setActiveMission('m1');
+    expect(mgr.getActiveMission()?.id).toBe('m1');
+
+    // Complete active mission → should auto-resume m2 from backlog
+    mgr.updateStatus('m1', 'completed');
+    expect(mgr.getActiveMission()?.id).toBe('m2');
+    expect(mgr.getTask('m2')?.status).toBe('running');
+    expect(mgr.getBacklog()).toHaveLength(0);
+  });
+
+  it('should stack multiple paused missions', () => {
+    const mgr = new TaskTreeManager();
+    mgr.submitTask({ id: 'm1', description: 'Mission 1', type: 'mission' });
+    mgr.submitTask({ id: 'm2', description: 'Mission 2', type: 'mission' });
+    mgr.submitTask({ id: 'm3', description: 'Mission 3', type: 'mission' });
+
+    // Set all to running
+    mgr.getTask('m1')!.status = 'running' as any;
+    mgr.getTask('m2')!.status = 'running' as any;
+    mgr.getTask('m3')!.status = 'running' as any;
+
+    // m3 → m2 → m1
+    mgr.setActiveMission('m2');
+    mgr.setActiveMission('m1');
+
+    expect(mgr.getBacklog()).toHaveLength(2);
+    expect(mgr.getBacklog()[0].id).toBe('m3'); // m3 pushed first
+    expect(mgr.getBacklog()[1].id).toBe('m2'); // m2 pushed second
+
+    // Complete m1 → auto-resume m2
+    mgr.updateStatus('m1', 'completed');
+    expect(mgr.getActiveMission()?.id).toBe('m2');
+    expect(mgr.getBacklog()).toHaveLength(1);
+    expect(mgr.getBacklog()[0].id).toBe('m3');
+  });
+
+  it('should restore specific mission from backlog (swaps current)', () => {
+    const mgr = new TaskTreeManager();
+    mgr.submitTask({ id: 'm1', description: 'Mission 1', type: 'mission' });
+    mgr.submitTask({ id: 'm2', description: 'Mission 2', type: 'mission' });
+    mgr.getTask('m2')!.status = 'running' as any;
+
+    mgr.setActiveMission('m1'); // m2 paused → backlog
+    expect(mgr.getBacklog()).toHaveLength(1);
+    expect(mgr.getBacklog()[0].id).toBe('m2');
+
+    const restored = mgr.restoreFromBacklog('m2');
+    expect(restored).toBe(true);
+    expect(mgr.getActiveMission()?.id).toBe('m2');
+    // m1 swapped into backlog
+    expect(mgr.getBacklog()).toHaveLength(1);
+    expect(mgr.getBacklog()[0].id).toBe('m1');
+  });
+
+  it('should restoreFromBacklog return false for unknown mission', () => {
+    const mgr = new TaskTreeManager();
+    expect(mgr.restoreFromBacklog('nonexistent')).toBe(false);
+  });
+
+  it('should not push duplicate to backlog', () => {
+    const mgr = new TaskTreeManager();
+    mgr.submitTask({ id: 'm1', description: 'M1', type: 'mission' });
+    mgr.submitTask({ id: 'm2', description: 'M2', type: 'mission' });
+    mgr.getTask('m2')!.status = 'running' as any;
+
+    mgr.setActiveMission('m1'); // m2 → backlog=[m2]
+    mgr.setActiveMission('m2'); // m2 removed from backlog, m1 → backlog=[m1]
+    expect(mgr.getBacklog()).toHaveLength(1);
+    expect(mgr.getBacklog()[0].id).toBe('m1');
   });
 });

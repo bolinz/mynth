@@ -266,6 +266,37 @@ describe('Web server routes', () => {
     expect(tree.getActiveMission()?.id).toBe('mission-a');
   });
 
+  it('GET /api/tree/backlog should return paused missions', async () => {
+    const tree = engine.getScheduler().tree;
+    tree.submitTask({ id: 'm-pri', description: 'Primary', type: 'mission' });
+    tree.submitTask({ id: 'm-sec', description: 'Secondary', type: 'mission' });
+    tree.getTask('m-sec')!.status = 'running' as any;
+    tree.setActiveMission('m-pri');
+
+    const res = await fetchUrl(`${base}/api/tree/backlog`);
+    expect(res.status).toBe(200);
+    const backlog = JSON.parse(res.body);
+    expect(Array.isArray(backlog)).toBe(true);
+    expect(backlog.some((m: any) => m.id === 'm-sec')).toBe(true);
+  });
+
+  it('POST /api/tree/restore should restore from backlog', async () => {
+    const tree = engine.getScheduler().tree;
+    tree.submitTask({ id: 'm-r1', description: 'R1', type: 'mission' });
+    tree.submitTask({ id: 'm-r2', description: 'R2', type: 'mission' });
+    tree.getTask('m-r2')!.status = 'running' as any;
+    tree.setActiveMission('m-r1'); // m-r2 → backlog
+
+    const res = await postUrl(`${base}/api/tree/restore`, { missionId: 'm-r2' });
+    expect(res.status).toBe(200);
+    expect(tree.getActiveMission()?.id).toBe('m-r2');
+  });
+
+  it('POST /api/tree/restore should return 404 for unknown', async () => {
+    const res = await postUrl(`${base}/api/tree/restore`, { missionId: 'unknown' });
+    expect(res.status).toBe(404);
+  });
+
   it('POST /api/tree/activate should return 404 for unknown mission', async () => {
     const res = await postUrl(`${base}/api/tree/activate`, { missionId: 'nonexistent' });
     expect(res.status).toBe(404);
