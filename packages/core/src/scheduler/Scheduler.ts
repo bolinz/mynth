@@ -8,8 +8,32 @@ export class Scheduler {
   private tasks = new Map<string, TaskContext>();
   private onTaskChange?: (taskId: string, status: TaskStatus) => void;
   tree = new TaskTreeManager();
+  private draining = false;
+
+  isDraining(): boolean {
+    return this.draining;
+  }
+
+  setDraining(v: boolean): void {
+    this.draining = v;
+  }
+
+  async waitForEmpty(timeoutMs: number): Promise<boolean> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const active = Array.from(this.tasks.values()).filter(
+        (t) => t.status === 'running' || t.status === 'queued',
+      );
+      if (active.length === 0) return true;
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    return false;
+  }
 
   async submit(task: Task): Promise<string> {
+    if (this.draining) {
+      throw new Error('Scheduler is draining, cannot accept new tasks');
+    }
     this.tree.submitTask({ ...task, id: task.id, type: task.type || 'task' });
     const ctx = this.queue.enqueue(task);
     this.tasks.set(ctx.taskId, ctx);

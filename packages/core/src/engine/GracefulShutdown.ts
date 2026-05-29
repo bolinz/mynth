@@ -21,17 +21,20 @@ export class GracefulShutdown {
   }
 
   async shutdown(): Promise<void> {
+    if (this.draining) return;
     this.draining = true;
+    this.scheduler.setDraining(true);
 
-    // Wait for running tasks to complete
-    const running = this.scheduler.getAllTasks().filter((t) => t.status === 'running');
+    const running = this.scheduler
+      .getAllTasks()
+      .filter((t) => t.status === 'running' || t.status === 'queued');
+
     if (running.length > 0) {
-      const deadline = Date.now() + this.config.drainTimeout;
-      for (const task of running) {
-        const remaining = deadline - Date.now();
-        if (remaining <= 0) break;
-        // Wait briefly for task to complete
-        await new Promise((r) => setTimeout(r, Math.min(remaining, 1000)));
+      const drained = await this.scheduler.waitForEmpty(this.config.drainTimeout);
+      if (!drained) {
+        console.warn(
+          `[GracefulShutdown] ${running.length} tasks still running after ${this.config.drainTimeout}ms, closing DB`,
+        );
       }
     }
 

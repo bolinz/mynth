@@ -193,6 +193,9 @@ export class CoreEngine {
   }
 
   async executeTask(description: string): Promise<TaskResult> {
+    if (this.shutdown.isDraining()) {
+      throw new Error('Engine is shutting down');
+    }
     const taskId = `task_${Date.now()}`;
     await this.scheduler.submit({ id: taskId, description, priority: 1 });
     this.bus.publish('task.submitted', { taskId, description });
