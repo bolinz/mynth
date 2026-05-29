@@ -1,4 +1,4 @@
-import type { AgentId, AgentMetadata, Capability, TransferDecision } from '@mynth/sdk';
+import type { AgentId, AgentMetadata, Capability, TaskContext, TransferDecision } from '@mynth/sdk';
 import { PrivateMemory } from '../memory/PrivateMemory.ts';
 import type { EventBus } from '../message-bus/EventBus.ts';
 import type { Persistence } from '../persistence/Persistence.ts';
@@ -14,6 +14,7 @@ export class BaseAgent {
   lastLlmOutput = '';
   onStateChange?: (state: AgentState) => void;
 
+  private context: TaskContext | null = null;
   private _taskCount = 0;
   private _lastState: AgentState = 'idle';
   readonly memory: PrivateMemory;
@@ -42,7 +43,8 @@ export class BaseAgent {
     return this.stateMachine.current;
   }
 
-  assignTask(_task: unknown): void {
+  assignTask(task: TaskContext): void {
+    this.context = task;
     this.stateMachine.transition('thinking');
     this.stateChanged();
   }
@@ -68,6 +70,7 @@ export class BaseAgent {
   }
 
   complete(): void {
+    this.context = null;
     this._taskCount++;
     this.metadata.taskCount = this._taskCount;
     this.metadata.lastActiveAt = Date.now();
@@ -99,7 +102,7 @@ export class BaseAgent {
           timestamp: Date.now(),
           state: 'idle',
           partialResult: null,
-          context: {} as any,
+          context: this.context ?? {},
         },
       };
     }
@@ -121,7 +124,7 @@ export class BaseAgent {
           timestamp: Date.now(),
           state: 'idle',
           partialResult: null,
-          context: {} as any,
+          context: this.context ?? {},
         },
       };
     }

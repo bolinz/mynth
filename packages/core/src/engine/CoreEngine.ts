@@ -230,12 +230,8 @@ export class CoreEngine {
           constraints: { requiredCapabilities: [], forbiddenAgents: [], maxHops: 10 },
         },
         analysis.firstAgent,
+        analysis.capabilities,
       );
-      taskContext.neededCapabilities = analysis.capabilities.map((name) => ({
-        type: name as any,
-        level: 5,
-        confidence: 0.5,
-      }));
 
       const chain = new ChainTransferManager(
         this.pool,

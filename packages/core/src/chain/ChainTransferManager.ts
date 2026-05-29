@@ -127,11 +127,7 @@ export class ChainTransferManager {
           return this.escalate('next_agent_unavailable');
         }
 
-        for (const cap of agent.capabilities) {
-          if (this._taskContext?.neededCapabilities.some((c) => c.type === cap.type)) {
-            this.satisfiedTypes.add(cap.type);
-          }
-        }
+        this.satisfiedTypes.add(cap);
 
         this._currentAgentId = decision.nextAgent;
         nextAgent.assignTask(this._taskContext!);

@@ -1,9 +1,9 @@
 export type InterventionAction =
   | { type: 'warn'; message: string }
   | { type: 'pause'; reason: string }
-  | { type: 'replace'; oldAgent: string; newAgent: string }
+  | { type: 'replace'; oldAgent: string }
   | { type: 'rollback'; checkpoint: string }
-  | { type: 'reroute'; newStart: string }
+  | { type: 'reroute' }
   | { type: 'terminate'; reason: string };
 
 export interface AnomalyEvent {
@@ -25,9 +25,9 @@ export class Intervener {
       case 'duration_exceeded':
         return { type: 'pause', reason: `Duration exceeded ${anomaly.threshold}` };
       case 'agent_error':
-        return { type: 'replace', oldAgent: anomaly.agentId ?? '', newAgent: '' };
+        return { type: 'replace', oldAgent: anomaly.agentId ?? '' };
       case 'cycle_pattern':
-        return { type: 'reroute', newStart: '' };
+        return { type: 'reroute' };
       case 'security_violation':
         return { type: 'terminate', reason: 'Security violation detected' };
       default:

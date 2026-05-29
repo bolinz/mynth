@@ -91,15 +91,23 @@ export class Orchestrator {
     };
   }
 
-  async initializeChain(task: Task, firstAgent: AgentId): Promise<TaskContext> {
+  async initializeChain(
+    task: Partial<Task> & { id: string; description: string; priority: number },
+    firstAgentId: string,
+    capabilities?: string[],
+  ): Promise<TaskContext> {
     return {
       taskId: task.id,
       description: task.description,
       priority: task.priority,
       status: 'running',
-      neededCapabilities: [],
+      neededCapabilities: (capabilities ?? []).map((name) => ({
+        type: name,
+        level: 5,
+        confidence: 0.5,
+      })),
       hopHistory: [],
-      currentAgent: firstAgent,
+      currentAgent: firstAgentId,
       createdAt: Date.now(),
     };
   }
