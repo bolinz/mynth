@@ -55,9 +55,9 @@ describe('Tracer', () => {
       tracer.endSpan(s.spanId);
     }
     const inflight = tracer.startSpan('inflight', 'trace-1');
-    expect(
-      tracer.getAllSpans().filter((s) => s.name.startsWith('completed.')).length,
-    ).toBeLessThan(5000);
+    expect(tracer.getAllSpans().filter((s) => s.name.startsWith('completed.')).length).toBeLessThan(
+      5000,
+    );
     expect(tracer.getAllSpans().find((s) => s.spanId === inflight.spanId)).toBeDefined();
   });
 
