@@ -62,7 +62,7 @@ describe('MessageBus', () => {
 
   it('should handle enqueue rejection without unhandled rejection', async () => {
     const bus = new MessageBus();
-    bus['queue'].enqueue = async () => {
+    (bus as any).queue.enqueue = async () => {
       throw new Error('queue full');
     };
 
