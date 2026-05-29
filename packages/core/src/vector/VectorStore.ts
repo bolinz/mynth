@@ -16,7 +16,6 @@ export class VectorStore {
   private items = new Map<string, VectorItem>();
   private ivf = new IVFIndex();
   private rebuildThreshold = 50000;
-  private needsRebuild = false;
 
   constructor(private dimension: number) {}
 
@@ -42,7 +41,6 @@ export class VectorStore {
       this.items.set(item.id, { id: item.id, vector: item.vector, metadata: item.metadata });
     }
     if (this.items.size >= this.rebuildThreshold) {
-      this.needsRebuild = true;
       await this.rebuildIVF();
     }
   }
@@ -72,7 +70,6 @@ export class VectorStore {
     }
     this.items.set(id, { id, vector, metadata });
     if (this.items.size >= this.rebuildThreshold) {
-      this.needsRebuild = true;
       await this.rebuildIVF();
     }
   }
@@ -101,7 +98,6 @@ export class VectorStore {
       vecs.set(id, item.vector);
     }
     this.ivf.train(vecs);
-    this.needsRebuild = false;
   }
 
   private bruteForceSearch(query: number[], topK: number): SearchResult[] {
