@@ -256,6 +256,21 @@ describe('Web server routes', () => {
     expect(res.status).toBe(404);
   });
 
+  it('POST /api/tree/activate should switch active mission', async () => {
+    const tree = engine.getScheduler().tree;
+    tree.submitTask({ id: 'mission-a', description: 'Mission A', type: 'mission' });
+    tree.submitTask({ id: 'mission-b', description: 'Mission B', type: 'mission' });
+
+    const res = await postUrl(`${base}/api/tree/activate`, { missionId: 'mission-a' });
+    expect(res.status).toBe(200);
+    expect(tree.getActiveMission()?.id).toBe('mission-a');
+  });
+
+  it('POST /api/tree/activate should return 404 for unknown mission', async () => {
+    const res = await postUrl(`${base}/api/tree/activate`, { missionId: 'nonexistent' });
+    expect(res.status).toBe(404);
+  });
+
   it('GET /nonexistent should return 404', async () => {
     const res = await fetchUrl(`${base}/nonexistent`);
     expect(res.status).toBe(404);

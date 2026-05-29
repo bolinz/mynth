@@ -98,4 +98,31 @@ describe('TaskTreeManager', () => {
     const chain = mgr.getParentChain('t1');
     expect(chain.map((t) => t.id)).toEqual(['m1', 'q1', 't1']);
   });
+
+  it('should set active mission', () => {
+    const mgr = new TaskTreeManager();
+    mgr.submitTask({ id: 'm1', description: 'Mission 1', type: 'mission' });
+    mgr.submitTask({ id: 'm2', description: 'Mission 2', type: 'mission' });
+
+    expect(mgr.getActiveMission()?.id).toBe('m2'); // auto-set to latest
+
+    const ok = mgr.setActiveMission('m1');
+    expect(ok).toBe(true);
+    expect(mgr.getActiveMission()?.id).toBe('m1');
+
+    // Old mission (m2) should be archived
+    const oldMission = mgr.getTask('m2');
+    expect(oldMission?.status).toBe('archived');
+  });
+
+  it('should return false for nonexistent task', () => {
+    const mgr = new TaskTreeManager();
+    expect(mgr.setActiveMission('nonexistent')).toBe(false);
+  });
+
+  it('should return false for non-mission task', () => {
+    const mgr = new TaskTreeManager();
+    mgr.submitTask({ id: 't1', description: 'Task', type: 'task' });
+    expect(mgr.setActiveMission('t1')).toBe(false);
+  });
 });

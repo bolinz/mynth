@@ -234,6 +234,25 @@ export function startWebServer(engine: CoreEngine, port = 3000): http.Server {
       return;
     }
 
+    if (url.pathname === '/api/tree/activate' && req.method === 'POST') {
+      let body = '';
+      req.on('data', (chunk) => {
+        body += chunk;
+      });
+      req.on('end', () => {
+        try {
+          const { missionId } = JSON.parse(body);
+          const ok = engine.scheduler.tree.setActiveMission(missionId);
+          res.writeHead(ok ? 200 : 404);
+          res.end(JSON.stringify({ success: ok }));
+        } catch (err) {
+          res.writeHead(500);
+          res.end(JSON.stringify({ error: String(err) }));
+        }
+      });
+      return;
+    }
+
     if (url.pathname === '/tree') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       const html = `<!DOCTYPE html>

@@ -527,6 +527,22 @@ export async function startTui(engine: CoreEngine): Promise<void> {
         log('\u25b6', `views (${renderers.length} renderers)`, '{cyan-fg}');
         break;
       }
+      case 'switch': {
+        const missionId = args[0];
+        if (!missionId) {
+          chainPanel.setContent('  {red-fg}Usage: /switch <missionId>{/}');
+          break;
+        }
+        const ok = engine.scheduler.tree.setActiveMission(missionId);
+        if (ok) {
+          chainPanel.setContent(`  {green-fg}Switched active mission to: ${missionId}{/}`);
+          log('\u25b6', `Switched to mission: ${missionId}`, '{green-fg}');
+        } else {
+          chainPanel.setContent(`  {red-fg}Mission not found: ${missionId}{/}`);
+        }
+        break;
+      }
+
       case 'help': {
         chainPanel.setContent(
           '  {cyan-fg}Commands:{/}\n\n' +
@@ -537,6 +553,7 @@ export async function startTui(engine: CoreEngine): Promise<void> {
             '  {bold}/reject <id>{/}   Reject pending request\n' +
             '  {bold}/pending{/}       List pending approvals\n' +
             '  {bold}/views{/}         Show view renderer status\n' +
+            '  {bold}/switch <id>{/}  Switch active mission\n' +
             '  {bold}/help{/}          This message\n' +
             '  {yellow-fg}Key: a{/} approve first  {yellow-fg}r{/} reject first\n\n' +
             '  {bold}<any text>{/}      Run a task through the chain',

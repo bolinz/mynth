@@ -131,6 +131,23 @@ export class TaskTreeManager {
     return this.activeMissionId ? this.tasks.get(this.activeMissionId) : undefined;
   }
 
+  setActiveMission(missionId: string): boolean {
+    const task = this.tasks.get(missionId);
+    if (!task || task.type !== 'mission') return false;
+
+    // Auto-archive old mission
+    if (this.activeMissionId && this.activeMissionId !== missionId) {
+      const old = this.tasks.get(this.activeMissionId);
+      if (old && old.status !== 'archived') {
+        old.status = 'archived' as any;
+      }
+    }
+
+    this.activeMissionId = missionId;
+    task.status = 'running';
+    return true;
+  }
+
   // --- Progress ---
 
   updateProgress(taskId: string): void {
