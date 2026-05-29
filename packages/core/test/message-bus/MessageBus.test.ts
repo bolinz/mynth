@@ -60,6 +60,25 @@ describe('MessageBus', () => {
     expect(handler).toHaveBeenCalled();
   });
 
+  it('should handle enqueue rejection without unhandled rejection', async () => {
+    const bus = new MessageBus();
+    bus['queue'].enqueue = async () => {
+      throw new Error('queue full');
+    };
+
+    // Should not throw
+    bus.send('consumer-1', {
+      id: '1',
+      type: 'msg',
+      from: 'sender',
+      to: 'consumer-1',
+      payload: 'hello',
+    });
+
+    // Wait for promise to settle
+    await new Promise((r) => setTimeout(r, 50));
+  });
+
   it('should clear all events and messages', () => {
     const bus = new MessageBus();
     const handler = vi.fn();

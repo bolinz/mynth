@@ -20,13 +20,18 @@ export class MessageBus {
 
   // Message methods (point-to-point)
   send(to: string, message: Omit<QueueMessage, 'timestamp'>): void {
-    this.queue.enqueue({ ...message, timestamp: Date.now() }).then((status) => {
-      if (status && status.severity === 'critical') {
-        console.warn(
-          `[Backpressure] Queue critical: depth ${status.queueDepth}/${status.maxCapacity}`,
-        );
-      }
-    });
+    this.queue
+      .enqueue({ ...message, timestamp: Date.now() })
+      .then((status) => {
+        if (status && status.severity === 'critical') {
+          console.warn(
+            `[Backpressure] Queue critical: depth ${status.queueDepth}/${status.maxCapacity}`,
+          );
+        }
+      })
+      .catch((err) => {
+        console.error('[MessageBus] send failed:', err);
+      });
   }
 
   receive(consumerId: string): Promise<QueueMessage | null> {
