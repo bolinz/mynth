@@ -135,7 +135,16 @@ export class CoreEngine {
     // LLM infrastructure
     this.llmPool = new LLMPool();
     this.budgetTracker = new BudgetTracker();
+    this.rendererRegistry = new RendererRegistry();
+    this.rendererRegistry.register(markdownRenderer);
+    this.rendererRegistry.register(tableRenderer);
+    this.rendererRegistry.register(diffRenderer);
+    this.rendererRegistry.register(flowchartRenderer);
+    this.rendererRegistry.register(chartRenderer);
+    this.rendererRegistry.register(cardsRenderer);
+    this.rendererRegistry.register(rawHtmlRenderer);
     this.promptRegistry = new PromptRegistry(this.rendererRegistry);
+    this.interactionManager = new InteractionManager();
 
     if (process.env.ANTHROPIC_API_KEY) {
       const anthropic = new AnthropicProvider(
@@ -154,15 +163,6 @@ export class CoreEngine {
 
     this.capabilityRouter = new CapabilityRouter(this.llmPool);
     this.tracer = new Tracer();
-    this.rendererRegistry = new RendererRegistry();
-    this.rendererRegistry.register(markdownRenderer);
-    this.rendererRegistry.register(tableRenderer);
-    this.rendererRegistry.register(diffRenderer);
-    this.rendererRegistry.register(flowchartRenderer);
-    this.rendererRegistry.register(chartRenderer);
-    this.rendererRegistry.register(cardsRenderer);
-    this.rendererRegistry.register(rawHtmlRenderer);
-    this.interactionManager = new InteractionManager();
     this.shutdown = new GracefulShutdown(this.scheduler, this.memory, this.db, {
       drainTimeout: 10000,
     });
@@ -196,82 +196,94 @@ export class CoreEngine {
     if (this.shutdown.isDraining()) {
       throw new Error('Engine is shutting down');
     }
-    const taskId = `task_${Date.now()}`;
-    await this.scheduler.submit({ id: taskId, description, priority: 1 });
-    this.bus.publish('task.submitted', { taskId, description });
-    await this.stateStore.saveTask({
-      taskId,
-      description,
-      status: 'running',
-      hops: 0,
-      createdAt: Date.now(),
-    });
-
-    const analysis = await this.orchestrator.analyze({ id: taskId, description, priority: 1 });
-
-    const predicted = this.orchestrator.predictNext(analysis.capabilities);
-    for (const cap of predicted) {
-      const existing = this.pool.acquire(cap as any);
-      if (!existing) {
-        this.pool.createAgent(`warm-${cap}-${Date.now()}`, `Warm ${cap}`, [
-          { type: cap as any, level: 5, confidence: 0.5 },
-        ]);
-      } else {
-        this.pool.release(existing);
-      }
-    }
-
-    const taskContext = await this.orchestrator.initializeChain(
-      {
-        id: taskId,
+    const taskId = `task_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    try {
+      await this.scheduler.submit({ id: taskId, description, priority: 1 });
+      this.bus.publish('task.submitted', { taskId, description });
+      await this.stateStore.saveTask({
+        taskId,
         description,
-        priority: 1,
-        constraints: { requiredCapabilities: [], forbiddenAgents: [], maxHops: 10 },
-      },
-      analysis.firstAgent,
-    );
-    taskContext.neededCapabilities = analysis.capabilities.map((name) => ({
-      type: name as any,
-      level: 5,
-      confidence: 0.5,
-    }));
+        status: 'running',
+        hops: 0,
+        createdAt: Date.now(),
+      });
 
-    const chain = new ChainTransferManager(
-      this.pool,
-      this.observer,
-      this.intervener,
-      this.parsedConfig.maxHops,
-      this.bus as any,
-      this.llmPool,
-      this.promptRegistry,
-      this.budgetTracker,
-      this.capabilityRouter,
-      this.tracer,
-    );
-    const result = await chain.startChain(taskContext, analysis.firstAgent);
+      const analysis = await this.orchestrator.analyze({ id: taskId, description, priority: 1 });
 
-    // Update task progress via tree
-    this.scheduler.tree.updateStatus(taskId, result.status === 'complete' ? 'running' : 'failed');
-    this.scheduler.tree.updateProgress(taskId);
-    this.bus?.publish('task.progress_changed', {
-      taskId,
-      progress: this.scheduler.tree.getTask(taskId)?.progress ?? -1,
-    });
+      const predicted = this.orchestrator.predictNext(analysis.capabilities);
+      for (const cap of predicted) {
+        const existing = this.pool.acquire(cap as any);
+        if (!existing) {
+          this.pool.createAgent(`warm-${cap}-${Date.now()}`, `Warm ${cap}`, [
+            { type: cap as any, level: 5, confidence: 0.5 },
+          ]);
+        } else {
+          this.pool.release(existing);
+        }
+      }
 
-    for (const hop of result.hopHistory) {
-      await this.stateStore.saveHop(taskId, hop);
+      const taskContext = await this.orchestrator.initializeChain(
+        {
+          id: taskId,
+          description,
+          priority: 1,
+          constraints: { requiredCapabilities: [], forbiddenAgents: [], maxHops: 10 },
+        },
+        analysis.firstAgent,
+      );
+      taskContext.neededCapabilities = analysis.capabilities.map((name) => ({
+        type: name as any,
+        level: 5,
+        confidence: 0.5,
+      }));
+
+      const chain = new ChainTransferManager(
+        this.pool,
+        this.observer,
+        this.intervener,
+        this.parsedConfig.maxHops,
+        this.bus as any,
+        this.llmPool,
+        this.promptRegistry,
+        this.budgetTracker,
+        this.capabilityRouter,
+        this.tracer,
+      );
+      const result = await chain.startChain(taskContext, analysis.firstAgent);
+
+      // Update task progress via tree
+      this.scheduler.tree.updateStatus(taskId, result.status === 'complete' ? 'completed' : 'failed');
+      this.scheduler.tree.updateProgress(taskId);
+      this.bus?.publish('task.progress_changed', {
+        taskId,
+        progress: this.scheduler.tree.getTask(taskId)?.progress ?? -1,
+      });
+
+      for (const hop of result.hopHistory) {
+        await this.stateStore.saveHop(taskId, hop);
+      }
+
+      this.scheduler.updateStatus(taskId, result.status === 'complete' ? 'completed' : 'failed');
+      await this.stateStore.saveTask({
+        taskId,
+        description,
+        status: result.status,
+        hops: result.hopCount,
+        createdAt: Date.now(),
+      });
+      this.bus.publish('task.completed', { taskId, status: result.status, hops: result.hopCount });
+      return { taskId, status: result.status, hops: result.hopCount };
+    } catch (err) {
+      this.scheduler.updateStatus(taskId, 'failed');
+      await this.stateStore.saveTask({
+        taskId,
+        description,
+        status: 'failed',
+        hops: 0,
+        createdAt: Date.now(),
+      });
+      throw err;
     }
-
-    this.scheduler.updateStatus(taskId, result.status === 'complete' ? 'completed' : 'failed');
-    await this.stateStore.saveTask({
-      taskId,
-      description,
-      status: result.status,
-      hops: result.hopCount,
-      createdAt: Date.now(),
-    });
-    this.bus.publish('task.completed', { taskId, status: result.status, hops: result.hopCount });
-    return { taskId, status: result.status, hops: result.hopCount };
   }
 
   getScheduler(): Scheduler {
