@@ -7,7 +7,7 @@ export class LevelDBAdapter implements Persistence {
   constructor(private dbPath: string) {}
 
   async open(): Promise<void> {
-    this.db = new Level(this.dbPath, { valueEncoding: 'json' });
+    this.db = new Level(this.dbPath);
   }
 
   async get(key: string): Promise<unknown> {
