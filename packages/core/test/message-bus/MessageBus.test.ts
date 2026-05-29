@@ -60,6 +60,26 @@ describe('MessageBus', () => {
     expect(handler).toHaveBeenCalled();
   });
 
+  it('should handle enqueue rejection without unhandled rejection', async () => {
+    const bus = new MessageBus();
+    (bus as any).queue.enqueue = async () => {
+      throw new Error('queue full');
+    };
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    bus.send('consumer-1', {
+      id: '1',
+      type: 'msg',
+      from: 'sender',
+      to: 'consumer-1',
+      payload: 'hello',
+    });
+
+    await new Promise((r) => setTimeout(r, 50));
+    expect(spy).toHaveBeenCalledWith('[MessageBus] send failed:', expect.any(Error));
+    spy.mockRestore();
+  });
+
   it('should clear all events and messages', () => {
     const bus = new MessageBus();
     const handler = vi.fn();

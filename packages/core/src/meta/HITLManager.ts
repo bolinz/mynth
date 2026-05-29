@@ -37,7 +37,14 @@ export class HITLManager {
       const oldest = [...this.requests.entries()]
         .filter(([, r]) => r.status !== 'pending')
         .sort(([, a], [, b]) => (a.createdAt ?? 0) - (b.createdAt ?? 0))[0];
-      if (oldest) this.requests.delete(oldest[0]);
+      if (oldest) {
+        this.requests.delete(oldest[0]);
+      } else {
+        const oldestPending = [...this.requests.entries()].sort(
+          ([, a], [, b]) => (a.createdAt ?? 0) - (b.createdAt ?? 0),
+        )[0];
+        if (oldestPending) this.requests.delete(oldestPending[0]);
+      }
     }
     const request: HITLRequest = {
       ...data,

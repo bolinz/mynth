@@ -24,6 +24,30 @@ describe('Tracer', () => {
     expect(tracer.getTrace('t2').length).toBe(1);
   });
 
+  it('should prefer evicting completed spans over in-flight spans', () => {
+    const tracer = new Tracer();
+
+    for (let i = 0; i < 5000; i++) {
+      const s = tracer.startSpan(`completed.${i}`, 'trace-1');
+      tracer.endSpan(s.spanId);
+    }
+
+    const inflight = tracer.startSpan('inflight', 'trace-1');
+
+    expect(tracer.getAllSpans().find((s) => s.spanId === inflight.spanId)).toBeDefined();
+    expect(tracer.getAllSpans().length).toBeLessThanOrEqual(5000);
+  });
+
+  it('should fall back to FIFO eviction when all spans are in-flight', () => {
+    const tracer = new Tracer();
+    for (let i = 0; i < 5000; i++) {
+      tracer.startSpan(`inflight.${i}`, 'trace-1');
+    }
+    const newest = tracer.startSpan('newest', 'trace-1');
+    expect(tracer.getAllSpans().length).toBeLessThanOrEqual(5000);
+    expect(tracer.getAllSpans().find((s) => s.spanId === newest.spanId)).toBeDefined();
+  });
+
   it('should clear all spans', () => {
     const tracer = new Tracer();
     tracer.startSpan('test', 't1');

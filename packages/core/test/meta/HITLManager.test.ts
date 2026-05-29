@@ -100,6 +100,34 @@ describe('HITLManager', () => {
     }
   });
 
+  it('should evict oldest pending request when all are pending', async () => {
+    const mgr = new HITLManager();
+
+    const ids: string[] = [];
+    for (let i = 0; i < 1000; i++) {
+      const req = await mgr.submit({
+        agentId: 'a',
+        taskId: `t${i}`,
+        operation: { type: 'config.modify', target: 'x', summary: `req ${i}` },
+        triggeredBy: 'guard_rule',
+      });
+      ids.push(req.id);
+    }
+
+    expect(mgr.getAll().length).toBe(1000);
+
+    const extra = await mgr.submit({
+      agentId: 'a',
+      taskId: 't-extra',
+      operation: { type: 'config.modify', target: 'x', summary: 'extra' },
+      triggeredBy: 'guard_rule',
+    });
+
+    expect(mgr.getAll().length).toBe(1000);
+    expect(mgr.getById(ids[0])).toBeUndefined();
+    expect(mgr.getById(extra.id)).toBeDefined();
+  });
+
   it('should recover requests from LevelDB on loadAll', async () => {
     const { mkdtempSync, rmSync } = await import('fs');
     const { tmpdir } = await import('os');
