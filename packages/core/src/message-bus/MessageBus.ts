@@ -22,7 +22,9 @@ export class MessageBus {
   send(to: string, message: Omit<QueueMessage, 'timestamp'>): void {
     this.queue.enqueue({ ...message, timestamp: Date.now() }).then((status) => {
       if (status && status.severity === 'critical') {
-        console.warn(`[Backpressure] Queue critical: depth ${status.queueDepth}/${status.maxCapacity}`);
+        console.warn(
+          `[Backpressure] Queue critical: depth ${status.queueDepth}/${status.maxCapacity}`,
+        );
       }
     });
   }

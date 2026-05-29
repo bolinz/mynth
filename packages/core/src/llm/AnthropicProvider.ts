@@ -38,7 +38,8 @@ export class AnthropicProvider implements LLMProvider {
         inputTokens: json.usage?.input_tokens ?? 0,
         outputTokens: json.usage?.output_tokens ?? 0,
       },
-      finishReason: json.stop_reason === 'end_turn' || json.stop_reason === 'stop_sequence' ? 'stop' : 'length',
+      finishReason:
+        json.stop_reason === 'end_turn' || json.stop_reason === 'stop_sequence' ? 'stop' : 'length',
     };
   }
 

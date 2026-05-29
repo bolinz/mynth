@@ -31,7 +31,9 @@ export class StateStore {
   }
 
   async saveHop(taskId: string, hop: HopRecord): Promise<void> {
-    const key = this.k(`state:hop:${taskId}:${Date.now()}_${Math.random().toString(36).slice(2, 4)}`);
+    const key = this.k(
+      `state:hop:${taskId}:${Date.now()}_${Math.random().toString(36).slice(2, 4)}`,
+    );
     const index = await this.getHopIndex(taskId);
     index.push(key);
     await this.db.batch([

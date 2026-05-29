@@ -37,7 +37,10 @@ export class OpenAIProvider implements LLMProvider {
         inputTokens: json.usage?.prompt_tokens ?? 0,
         outputTokens: json.usage?.completion_tokens ?? 0,
       },
-      finishReason: json.choices[0]?.finish_reason === 'stop' || json.choices[0]?.finish_reason === 'tool_calls' ? 'stop' : 'length',
+      finishReason:
+        json.choices[0]?.finish_reason === 'stop' || json.choices[0]?.finish_reason === 'tool_calls'
+          ? 'stop'
+          : 'length',
     };
   }
 

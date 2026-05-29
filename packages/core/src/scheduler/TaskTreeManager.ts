@@ -218,7 +218,9 @@ export class TaskTreeManager {
     // Leaf task: no progress data
     if ((task.childIds ?? []).length === 0) return -1;
 
-    const children = (task.childIds ?? []).map((id) => this.tasks.get(id)).filter(Boolean) as Task[];
+    const children = (task.childIds ?? [])
+      .map((id) => this.tasks.get(id))
+      .filter(Boolean) as Task[];
     if (children.length === 0) return -1;
 
     const completed = children.filter((c) => c.status === 'completed').length;
