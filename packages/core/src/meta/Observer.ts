@@ -6,7 +6,7 @@ export interface Anomaly {
 
 export class Observer {
   private running = false;
-  private hopHistory: Array<{ from: string; to: string; duration: number }> = [];
+  private hopHistory: Array<{ from: string; to: string; timestamp: number; duration: number }> = [];
   private errorCounts = new Map<string, number>();
   private waitGraph = new Map<string, Set<string>>();
   private anomalyHandlers: Array<(anomaly: Anomaly) => void> = [];
@@ -28,7 +28,10 @@ export class Observer {
   }
 
   recordHop(from: string, to: string, duration: number): void {
-    this.hopHistory.push({ from, to, duration });
+    this.hopHistory.push({ from, to, timestamp: Date.now(), duration });
+    if (this.hopHistory.length > 10000) {
+      this.hopHistory.shift();
+    }
   }
 
   recordError(agentId: string): void {

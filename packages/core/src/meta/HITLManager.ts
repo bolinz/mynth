@@ -33,6 +33,12 @@ export class HITLManager {
   async submit(
     data: Omit<HITLRequest, 'id' | 'status' | 'createdAt' | 'decidedAt' | 'decidedBy'>,
   ): Promise<HITLRequest> {
+    if (this.requests.size >= 1000) {
+      const oldest = [...this.requests.entries()]
+        .filter(([, r]) => r.status !== 'pending')
+        .sort(([, a], [, b]) => (a.createdAt ?? 0) - (b.createdAt ?? 0))[0];
+      if (oldest) this.requests.delete(oldest[0]);
+    }
     const request: HITLRequest = {
       ...data,
       id: `hitl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,

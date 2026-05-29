@@ -148,7 +148,11 @@ export class EventBus {
     const handlers = this.handlers.get(topic);
     if (handlers) {
       for (const handler of handlers) {
-        handler(topic, payload);
+        try {
+          handler(topic, payload);
+        } catch (err) {
+          console.error(`[EventBus] Handler error on ${topic}:`, err);
+        }
       }
     }
   }
