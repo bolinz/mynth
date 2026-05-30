@@ -119,6 +119,53 @@ export class TaskTreeManager {
     return null;
   }
 
+  // --- Fork / Dependency ---
+
+  forkTasks(
+    parentId: string,
+    tasks: Array<Partial<Task> & { id: string; description: string }>,
+  ): Task {
+    const forkId = `fork_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const childIds = tasks.map((t) => t.id);
+
+    const fork = this.submitTask({
+      id: forkId,
+      description: `Fork: ${parentId}`,
+      type: 'fork',
+      parentId,
+      childIds,
+    });
+
+    for (const task of tasks) {
+      this.submitTask({ ...task, parentId: forkId });
+    }
+
+    return fork;
+  }
+
+  setDependency(taskId: string, dependsOnId: string): boolean {
+    const task = this.tasks.get(taskId);
+    const dep = this.tasks.get(dependsOnId);
+    if (!task || !dep) return false;
+
+    task.dependsOn = task.dependsOn ?? [];
+    if (!task.dependsOn.includes(dependsOnId)) {
+      task.dependsOn.push(dependsOnId);
+    }
+    return true;
+  }
+
+  checkDependencies(taskId: string): boolean {
+    const task = this.tasks.get(taskId);
+    if (!task) return true;
+    const deps = task.dependsOn ?? [];
+    if (deps.length === 0) return true;
+    return deps.every((depId) => {
+      const dep = this.tasks.get(depId);
+      return dep?.status === 'completed';
+    });
+  }
+
   getParentChain(taskId: string): Task[] {
     const chain: Task[] = [];
     let current = this.tasks.get(taskId);

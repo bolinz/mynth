@@ -205,4 +205,62 @@ describe('TaskTreeManager', () => {
     expect(mgr.getBacklog()).toHaveLength(1);
     expect(mgr.getBacklog()[0].id).toBe('m1');
   });
+
+  // --- Fork / Dependency ---
+
+  it('should fork tasks under a parent', () => {
+    const mgr = new TaskTreeManager();
+    mgr.submitTask({ id: 'm1', description: 'Mission', type: 'mission' });
+
+    const fork = mgr.forkTasks('m1', [
+      { id: 'a1', description: 'Approach A' },
+      { id: 'a2', description: 'Approach B' },
+    ]);
+
+    expect(fork.parentId).toBe('m1');
+    expect(mgr.getTask('a1')?.parentId).toBe(fork.id);
+    expect(mgr.getTask('a2')?.parentId).toBe(fork.id);
+    expect(mgr.getTask(fork.id)?.type).toBe('fork');
+    expect(mgr.getTask(fork.id)?.childIds).toEqual(['a1', 'a2']);
+  });
+
+  it('should set dependency between tasks', () => {
+    const mgr = new TaskTreeManager();
+    mgr.submitTask({ id: 't1', description: 'Task 1' });
+    mgr.submitTask({ id: 't2', description: 'Task 2' });
+
+    const ok = mgr.setDependency('t2', 't1');
+    expect(ok).toBe(true);
+    expect(mgr.getTask('t2')?.dependsOn).toContain('t1');
+  });
+
+  it('should return false setting dependency for nonexistent task', () => {
+    const mgr = new TaskTreeManager();
+    mgr.submitTask({ id: 't1', description: 'Task 1' });
+    expect(mgr.setDependency('nonexistent', 't1')).toBe(false);
+    expect(mgr.setDependency('t1', 'nonexistent')).toBe(false);
+  });
+
+  it('should check satisfied dependencies', () => {
+    const mgr = new TaskTreeManager();
+    mgr.submitTask({ id: 't1', description: 'Dep' });
+    mgr.submitTask({ id: 't2', description: 'Main', dependsOn: ['t1'] });
+
+    mgr.updateStatus('t1', 'completed');
+    expect(mgr.checkDependencies('t2')).toBe(true);
+  });
+
+  it('should detect unsatisfied dependencies', () => {
+    const mgr = new TaskTreeManager();
+    mgr.submitTask({ id: 't1', description: 'Dep' });
+    mgr.submitTask({ id: 't2', description: 'Main', dependsOn: ['t1'] });
+
+    expect(mgr.checkDependencies('t2')).toBe(false);
+  });
+
+  it('should return true if no dependencies', () => {
+    const mgr = new TaskTreeManager();
+    mgr.submitTask({ id: 't1', description: 'No deps' });
+    expect(mgr.checkDependencies('t1')).toBe(true);
+  });
 });
