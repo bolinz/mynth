@@ -1,4 +1,4 @@
-import type { EventTopic, EventPayload } from '../../../src/message-bus/EventBus.ts';
+import type { EventPayload, EventTopic } from '../../../src/message-bus/EventBus.ts';
 import type { MessageBus } from '../../../src/message-bus/MessageBus.ts';
 
 export interface EventRecord {

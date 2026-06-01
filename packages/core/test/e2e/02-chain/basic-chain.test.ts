@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createEngine, destroyEngine } from '../helpers/fixture.ts';
 import { collectEvents } from '../helpers/event-collector.ts';
+import { createEngine, destroyEngine } from '../helpers/fixture.ts';
 
 describe('e2e: basic chain transfer', () => {
   it('should complete a simple task with single agent', async () => {

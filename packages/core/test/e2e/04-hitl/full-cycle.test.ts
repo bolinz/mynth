@@ -52,7 +52,8 @@ describe('e2e: HITL full cycle', () => {
     const engine1 = new CoreEngine({ dbPath: dir });
     await engine1.start();
     const req = await engine1.hitlManager.submit({
-      agentId: 'a', taskId: 't1',
+      agentId: 'a',
+      taskId: 't1',
       operation: { type: 'config.modify', target: 'x', summary: 'test' },
       triggeredBy: 'guard_rule',
     });

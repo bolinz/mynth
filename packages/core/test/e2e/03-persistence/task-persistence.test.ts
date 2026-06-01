@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
 import { mkdtempSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { describe, expect, it } from 'vitest';
 import { CoreEngine } from '../../../src/engine/CoreEngine.ts';
 
 describe('e2e: persistence across restarts', () => {

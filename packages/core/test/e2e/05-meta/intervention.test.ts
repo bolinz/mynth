@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { AgentPool } from '../../../src/agent/AgentPool.ts';
-import { Observer } from '../../../src/meta/Observer.ts';
-import { Intervener } from '../../../src/meta/Intervener.ts';
 import { ChainTransferManager } from '../../../src/chain/ChainTransferManager.ts';
+import { Intervener } from '../../../src/meta/Intervener.ts';
+import { Observer } from '../../../src/meta/Observer.ts';
 
 function makeCtx(desc: string) {
   return {
