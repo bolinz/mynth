@@ -178,7 +178,7 @@ export class CoreEngine {
       }
     }, 30000);
 
-    this.registerDefaultAgents();
+    await this.registerDefaultAgents();
     this.running = true;
   }
 
@@ -293,10 +293,10 @@ export class CoreEngine {
     return this.pool;
   }
 
-  private registerDefaultAgents(): void {
+  private async registerDefaultAgents(): Promise<void> {
     for (const cfg of this.parsedConfig.agents) {
       this.pool.createAgent(cfg.id, cfg.name, cfg.capabilities);
-      this.stateStore.saveAgentConfig({
+      await this.stateStore.saveAgentConfig({
         id: cfg.id,
         name: cfg.name,
         capabilities: cfg.capabilities,
