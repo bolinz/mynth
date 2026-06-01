@@ -30,6 +30,12 @@ export class StateStore {
     return `${this.tenantPrefix}${key}`;
   }
 
+  private async readIndex(key: string): Promise<string[]> {
+    const raw = await this.db.get(key);
+    if (Array.isArray(raw)) return raw as string[];
+    return [];
+  }
+
   async saveHop(taskId: string, hop: HopRecord): Promise<void> {
     const key = this.k(
       `state:hop:${taskId}:${Date.now()}_${Math.random().toString(36).slice(2, 4)}`,
@@ -43,8 +49,7 @@ export class StateStore {
   }
 
   async loadTaskHops(taskId: string): Promise<HopRecord[]> {
-    const index: string[] =
-      ((await this.db.get(this.k(`state:index:hop:${taskId}`))) as string[]) ?? [];
+    const index = await this.readIndex(this.k(`state:index:hop:${taskId}`));
     const hops: HopRecord[] = [];
     for (const key of index) {
       const hop = await this.db.get(key);
@@ -54,7 +59,7 @@ export class StateStore {
   }
 
   async saveTask(task: StoredTask): Promise<void> {
-    const index: string[] = ((await this.db.get(this.k('state:index:tasks'))) as string[]) ?? [];
+    const index = await this.readIndex(this.k('state:index:tasks'));
     if (!index.includes(task.taskId)) {
       index.push(task.taskId);
       await this.db.batch([
@@ -67,7 +72,7 @@ export class StateStore {
   }
 
   async loadAllTasks(): Promise<StoredTask[]> {
-    const index: string[] = ((await this.db.get(this.k('state:index:tasks'))) as string[]) ?? [];
+    const index = await this.readIndex(this.k('state:index:tasks'));
     const tasks: StoredTask[] = [];
     for (const taskId of index) {
       const task = await this.db.get(this.k(`state:task:${taskId}`));
@@ -77,7 +82,7 @@ export class StateStore {
   }
 
   async saveAgentConfig(config: StoredAgentConfig): Promise<void> {
-    const index: string[] = ((await this.db.get(this.k('state:index:agents'))) as string[]) ?? [];
+    const index = await this.readIndex(this.k('state:index:agents'));
     if (!index.includes(config.id)) {
       index.push(config.id);
       await this.db.batch([
@@ -90,7 +95,7 @@ export class StateStore {
   }
 
   async loadAgentConfigs(): Promise<StoredAgentConfig[]> {
-    const index: string[] = ((await this.db.get(this.k('state:index:agents'))) as string[]) ?? [];
+    const index = await this.readIndex(this.k('state:index:agents'));
     const configs: StoredAgentConfig[] = [];
     for (const id of index) {
       const config = await this.db.get(this.k(`state:agent:${id}`));
@@ -100,6 +105,6 @@ export class StateStore {
   }
 
   private async getHopIndex(taskId: string): Promise<string[]> {
-    return ((await this.db.get(this.k(`state:index:hop:${taskId}`))) as string[]) ?? [];
+    return this.readIndex(this.k(`state:index:hop:${taskId}`));
   }
 }
