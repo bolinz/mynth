@@ -22,3 +22,9 @@ export type {
   Message,
   TransferDecision,
 } from './message.ts';
+
+export type {
+  RiskLevel,
+  ToolParameter,
+  ToolDefinition,
+} from './tool.ts';
