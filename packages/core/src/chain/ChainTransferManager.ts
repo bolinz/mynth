@@ -11,6 +11,7 @@ import type { Observer } from '../meta/Observer.ts';
 import type { Tracer } from '../meta/Tracer.ts';
 import type { PromptRegistry } from '../prompt/PromptRegistry.ts';
 import { extractJSON, validateJSON } from '../prompt/PromptSchema.ts';
+import type { ToolRegistry } from '../tool/ToolRegistry.ts';
 
 export interface TransferResult {
   taskId: string;
@@ -39,6 +40,7 @@ export class ChainTransferManager {
     private budgetTracker?: BudgetTracker,
     private capabilityRouter?: CapabilityRouter,
     private tracer?: Tracer,
+    private toolRegistry?: ToolRegistry,
   ) {
     this.tracer = tracer;
   }
@@ -289,7 +291,7 @@ export class ChainTransferManager {
         await new Promise((r) => setTimeout(r, 20));
         return '';
       }
-      const loop = new ReActLoop(provider);
+      const loop = new ReActLoop(provider, 10, this.toolRegistry);
       const prompt = this.promptRegistry?.buildStructuredPrompt(capability, task, '') ?? task;
       const agentResponse = await loop.execute(prompt, capability);
       const result = agentResponse.text;
