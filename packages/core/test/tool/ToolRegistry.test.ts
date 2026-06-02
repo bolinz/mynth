@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ToolRegistry } from '../../src/tool/ToolRegistry.ts';
 import type { Tool, ToolContext, ToolResult } from '../../src/tool/Tool.ts';
+import { ToolRegistry } from '../../src/tool/ToolRegistry.ts';
 
 describe('ToolRegistry', () => {
   it('should register and retrieve a tool', () => {
@@ -40,11 +40,15 @@ describe('ToolRegistry', () => {
     const registry = new ToolRegistry();
     registry.register({
       definition: { name: 'a', description: '', parameters: [], riskLevel: 'low' },
-      async execute() { return { success: true, data: null }; },
+      async execute() {
+        return { success: true, data: null };
+      },
     });
     registry.register({
       definition: { name: 'b', description: '', parameters: [], riskLevel: 'high' },
-      async execute() { return { success: true, data: null }; },
+      async execute() {
+        return { success: true, data: null };
+      },
     });
     expect(registry.listByRisk('low')).toHaveLength(1);
     expect(registry.listByRisk('high')).toHaveLength(1);

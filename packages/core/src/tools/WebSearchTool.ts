@@ -17,7 +17,10 @@ export class WebSearchTool implements Tool {
       const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
       const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
       const html = await res.text();
-      const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 3000);
+      const text = html
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .slice(0, 3000);
       return { success: true, data: text, mimeType: 'text/plain' };
     } catch (err) {
       return { success: false, error: String(err) };

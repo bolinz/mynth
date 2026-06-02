@@ -34,6 +34,12 @@ import {
   tableRenderer,
 } from '../renderers/index.ts';
 import { Scheduler } from '../scheduler/Scheduler.ts';
+import { ToolRegistry } from '../tool/ToolRegistry.ts';
+import { ApiCallTool } from '../tools/ApiCallTool.ts';
+import { CodeExecuteTool } from '../tools/CodeExecuteTool.ts';
+import { FileReadTool } from '../tools/FileReadTool.ts';
+import { FileWriteTool } from '../tools/FileWriteTool.ts';
+import { WebSearchTool } from '../tools/WebSearchTool.ts';
 import { GracefulShutdown } from './GracefulShutdown.ts';
 
 export interface EngineConfig {
@@ -74,6 +80,7 @@ export class CoreEngine {
   degradation!: DegradationMonitor;
   hitlManager!: HITLManager;
   tracer!: Tracer;
+  toolRegistry!: ToolRegistry;
   rendererRegistry!: RendererRegistry;
   interactionManager!: InteractionManager;
   private evictTimer?: ReturnType<typeof setInterval>;
@@ -131,6 +138,13 @@ export class CoreEngine {
     this.intervener = new Intervener();
     this.hitlManager = new HITLManager(this.db, this.eventBus);
     await this.hitlManager.loadAll();
+
+    this.toolRegistry = new ToolRegistry(this.hitlManager);
+    this.toolRegistry.register(new WebSearchTool());
+    this.toolRegistry.register(new FileReadTool());
+    this.toolRegistry.register(new FileWriteTool());
+    this.toolRegistry.register(new ApiCallTool());
+    this.toolRegistry.register(new CodeExecuteTool());
 
     // LLM infrastructure
     this.llmPool = new LLMPool();
@@ -244,6 +258,7 @@ export class CoreEngine {
         this.budgetTracker,
         this.capabilityRouter,
         this.tracer,
+        this.toolRegistry,
       );
       const result = await chain.startChain(taskContext, analysis.firstAgent);
 

@@ -6,7 +6,12 @@ export class CodeExecuteTool implements Tool {
     name: 'execute_code',
     description: 'Execute JavaScript code in a sandboxed environment',
     parameters: [
-      { name: 'code', type: 'string' as const, description: 'JavaScript code to execute', required: true },
+      {
+        name: 'code',
+        type: 'string' as const,
+        description: 'JavaScript code to execute',
+        required: true,
+      },
     ],
     riskLevel: 'high' as const,
   };

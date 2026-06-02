@@ -1,6 +1,6 @@
 import type { ToolDefinition } from '@mynth/sdk';
-import type { Tool, ToolContext, ToolResult } from './Tool.ts';
 import type { HITLManager } from '../meta/HITLManager.ts';
+import type { Tool, ToolContext, ToolResult } from './Tool.ts';
 
 export class ToolRegistry {
   private tools = new Map<string, Tool>();
@@ -23,7 +23,11 @@ export class ToolRegistry {
     return this.list().filter((d) => d.riskLevel === level);
   }
 
-  async execute(name: string, args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
+  async execute(
+    name: string,
+    args: Record<string, unknown>,
+    ctx: ToolContext,
+  ): Promise<ToolResult> {
     const tool = this.tools.get(name);
     if (!tool) {
       return { success: false, error: `Tool not found: ${name}` };

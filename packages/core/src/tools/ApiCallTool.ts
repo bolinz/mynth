@@ -17,7 +17,10 @@ export class ApiCallTool implements Tool {
     try {
       const parsed = new URL(url);
       if (ctx.allowedHosts && !ctx.allowedHosts.includes(parsed.hostname)) {
-        return { success: false, error: `Access denied: ${parsed.hostname} is not in allowed hosts` };
+        return {
+          success: false,
+          error: `Access denied: ${parsed.hostname} is not in allowed hosts`,
+        };
       }
 
       const res = await fetch(url, { signal: AbortSignal.timeout(10000) });

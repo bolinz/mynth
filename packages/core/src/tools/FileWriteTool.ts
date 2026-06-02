@@ -1,5 +1,5 @@
-import { writeFile } from 'fs/promises';
 import { resolve } from 'path';
+import { writeFile } from 'fs/promises';
 import type { Tool, ToolContext, ToolResult } from '../tool/Tool.ts';
 
 export class FileWriteTool implements Tool {

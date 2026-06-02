@@ -30,4 +30,24 @@ describe('ReActLoop', () => {
     const agentResponse = await loop.execute('complex question', 'reasoning');
     expect(agentResponse.text).toContain('max iterations');
   });
+
+  it('should parse tool call from response', () => {
+    const mockLLM: LLMProvider = {
+      complete: vi.fn(),
+      completeStream: vi.fn() as any,
+    };
+    const loop = new ReActLoop(mockLLM);
+    const text = 'I need to search.\n{"tool": "web_search", "args": {"query": "hello"}}\n';
+    const result = (loop as any).parseToolCall(text);
+    expect(result).toEqual({ tool: 'web_search', args: { query: 'hello' } });
+  });
+
+  it('should return null for response without tool call', () => {
+    const mockLLM: LLMProvider = {
+      complete: vi.fn(),
+      completeStream: vi.fn() as any,
+    };
+    const loop = new ReActLoop(mockLLM);
+    expect((loop as any).parseToolCall('Just thinking')).toBeNull();
+  });
 });

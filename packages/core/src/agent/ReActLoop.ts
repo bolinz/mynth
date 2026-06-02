@@ -1,5 +1,6 @@
 import type { LLMProvider } from '../llm/LLMProvider.ts';
 import type { Interaction, View } from '../meta/ViewRenderer.ts';
+import type { ToolRegistry } from '../tool/ToolRegistry.ts';
 
 export interface AgentResponse {
   text: string;
@@ -8,9 +9,12 @@ export interface AgentResponse {
 }
 
 export class ReActLoop {
+  private taskId = '';
+
   constructor(
     private llm: LLMProvider,
     private maxIterations = 10,
+    private toolRegistry?: ToolRegistry,
   ) {}
 
   async execute(task: string, _capability: string): Promise<AgentResponse> {
@@ -26,6 +30,21 @@ export class ReActLoop {
 
       thought += '\n' + response.content;
 
+      if (this.toolRegistry) {
+        const toolCall = this.parseToolCall(response.content);
+        if (toolCall) {
+          const toolResult = await this.toolRegistry.execute(toolCall.tool, toolCall.args, {
+            agentId: 'agent',
+            taskId: this.taskId,
+          });
+          const observation = toolResult.success
+            ? `Tool ${toolCall.tool} returned: ${JSON.stringify(toolResult.data).slice(0, 2000)}`
+            : `Tool ${toolCall.tool} failed: ${toolResult.error}`;
+          thought += '\n' + observation;
+          continue;
+        }
+      }
+
       if (this.isComplete(response.content)) {
         return this.parseResponse(response.content);
       }
@@ -35,6 +54,33 @@ export class ReActLoop {
       text: `Reached max iterations (${this.maxIterations}): ${thought}`,
       views: [],
     };
+  }
+
+  private parseToolCall(text: string): { tool: string; args: Record<string, unknown> } | null {
+    const match = text.match(/\{\s*"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{/);
+    if (!match) return null;
+    try {
+      const start = match.index!;
+      let depth = 0;
+      let end = start;
+      for (let i = start; i < text.length; i++) {
+        if (text[i] === '{') depth++;
+        if (text[i] === '}') {
+          depth--;
+          if (depth === 0) {
+            end = i + 1;
+            break;
+          }
+        }
+      }
+      const json = JSON.parse(text.slice(start, end));
+      if (json.tool && typeof json.args === 'object') return json;
+    } catch {}
+    return null;
+  }
+
+  setTaskId(id: string): void {
+    this.taskId = id;
   }
 
   private parseResponse(content: string): AgentResponse {
