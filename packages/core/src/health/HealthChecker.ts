@@ -1,5 +1,5 @@
-import type { DegradationMonitor } from '../meta/DegradationMonitor.ts';
 import type { AgentPool } from '../agent/AgentPool.ts';
+import type { DegradationMonitor } from '../meta/DegradationMonitor.ts';
 import type { Persistence } from '../persistence/Persistence.ts';
 
 export interface SubsystemHealth {

@@ -1,5 +1,5 @@
-import { Tracer, type Span } from '../meta/Tracer.ts';
 import { writeFile } from 'fs/promises';
+import type { Span, Tracer } from '../meta/Tracer.ts';
 
 export interface ExportedSpan {
   traceId: string;

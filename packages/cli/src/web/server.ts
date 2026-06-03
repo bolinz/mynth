@@ -3,6 +3,7 @@ import http from 'node:http';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { CoreEngine } from '@mynth/core';
+import { TraceExporter } from '@mynth/core';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -380,6 +381,26 @@ evtSource.addEventListener('task.submitted', () => loadTree());
 </script>
 </body></html>`;
       res.end(html);
+      return;
+    }
+
+    if (url.pathname === '/metrics') {
+      res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end(engine.metricsRegistry.metrics());
+      return;
+    }
+
+    if (url.pathname === '/health') {
+      const health = await engine.healthChecker.check();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(health, null, 2));
+      return;
+    }
+
+    if (url.pathname === '/api/traces') {
+      const exporter = new TraceExporter(engine.tracer);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(exporter.export(), null, 2));
       return;
     }
 

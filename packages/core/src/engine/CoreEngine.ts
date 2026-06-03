@@ -2,6 +2,7 @@ import type { TenantContext } from '@mynth/sdk';
 import { AgentPool } from '../agent/AgentPool.ts';
 import { ChainTransferManager } from '../chain/ChainTransferManager.ts';
 import { EngineConfigSchema, type ValidatedEngineConfig } from '../config/schema.ts';
+import { HealthChecker } from '../health/HealthChecker.ts';
 import { AnthropicProvider } from '../llm/AnthropicProvider.ts';
 import { BudgetTracker } from '../llm/BudgetTracker.ts';
 import { CapabilityRouter } from '../llm/CapabilityRouter.ts';
@@ -20,6 +21,7 @@ import { Observer } from '../meta/Observer.ts';
 import { Orchestrator } from '../meta/Orchestrator.ts';
 import { Tracer } from '../meta/Tracer.ts';
 import { RendererRegistry } from '../meta/ViewRenderer.ts';
+import { MetricsRegistry } from '../metrics/MetricsRegistry.ts';
 import { LevelDBAdapter } from '../persistence/LevelDBAdapter.ts';
 import type { Persistence } from '../persistence/Persistence.ts';
 import { StateStore } from '../persistence/StateStore.ts';
@@ -81,6 +83,8 @@ export class CoreEngine {
   hitlManager!: HITLManager;
   tracer!: Tracer;
   toolRegistry!: ToolRegistry;
+  metricsRegistry!: MetricsRegistry;
+  healthChecker!: HealthChecker;
   rendererRegistry!: RendererRegistry;
   interactionManager!: InteractionManager;
   private evictTimer?: ReturnType<typeof setInterval>;
@@ -139,6 +143,8 @@ export class CoreEngine {
     this.hitlManager = new HITLManager(this.db, this.eventBus);
     await this.hitlManager.loadAll();
 
+    this.metricsRegistry = new MetricsRegistry();
+
     this.toolRegistry = new ToolRegistry(this.hitlManager);
     this.toolRegistry.register(new WebSearchTool());
     this.toolRegistry.register(new FileReadTool());
@@ -181,6 +187,7 @@ export class CoreEngine {
       drainTimeout: 10000,
     });
     this.degradation = new DegradationMonitor(this.eventBus);
+    this.healthChecker = new HealthChecker(this.degradation, this.pool, this.db);
 
     this.evictTimer = setInterval(() => {
       const evicted = this.pool.evictIdle();

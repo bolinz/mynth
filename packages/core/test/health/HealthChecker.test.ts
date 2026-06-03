@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { AgentPool } from '../../src/agent/AgentPool.ts';
 import { HealthChecker } from '../../src/health/HealthChecker.ts';
 import { DegradationMonitor } from '../../src/meta/DegradationMonitor.ts';
-import { AgentPool } from '../../src/agent/AgentPool.ts';
 
 describe('HealthChecker', () => {
   it('should return healthy for empty checker', async () => {
