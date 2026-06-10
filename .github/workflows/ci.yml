@@ -27,7 +27,7 @@ jobs:
       - run: pnpm run build
 
       - name: Test
-        run: pnpm test -- --coverage
+        run: pnpm test -- --coverage --exclude '**/browser.test.ts'
 
       - name: Bench
         run: pnpm bench
@@ -59,7 +59,9 @@ jobs:
       - run: pnpm run build
 
       - name: Install Playwright
-        run: npx playwright install chromium
+        run: |
+          pnpm add -D playwright
+          npx playwright install chromium
 
       - name: E2E Tests
         run: pnpm test -- packages/core/test/e2e/
