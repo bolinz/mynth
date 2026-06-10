@@ -1,4 +1,4 @@
-import type { AgentId, HandoverConstraints, Task, TaskContext } from '@mynth/sdk';
+import type { AgentId, CapabilityType, HandoverConstraints, Task, TaskContext } from '@mynth/sdk';
 
 export interface AgentCapabilityMap {
   agentId: AgentId;
@@ -102,7 +102,7 @@ export class Orchestrator {
       priority: task.priority,
       status: 'running',
       neededCapabilities: (capabilities ?? []).map((name) => ({
-        type: name,
+        type: name as CapabilityType,
         level: 5,
         confidence: 0.5,
       })),

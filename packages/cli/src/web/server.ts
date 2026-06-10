@@ -191,7 +191,7 @@ export function startWebServer(engine: CoreEngine, port = 3000): http.Server {
     }
 
     if (url.pathname === '/api/tree') {
-      const tree = engine.scheduler.getTree();
+      const tree = engine.getScheduler().getTree();
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(tree));
       return;
@@ -205,26 +205,26 @@ export function startWebServer(engine: CoreEngine, port = 3000): http.Server {
       req.on('end', () => {
         try {
           const { taskId, newParentId } = JSON.parse(body);
-          const task = engine.scheduler.tree.getTask(taskId);
+          const task = engine.getScheduler().tree.getTask(taskId);
           if (!task) {
             res.writeHead(404);
             res.end(JSON.stringify({ error: 'Task not found' }));
             return;
           }
           if (task.parentId) {
-            const oldParent = engine.scheduler.tree.getTask(task.parentId);
+            const oldParent = engine.getScheduler().tree.getTask(task.parentId);
             if (oldParent) {
               oldParent.childIds = oldParent.childIds!.filter((id) => id !== taskId);
             }
           }
           task.parentId = newParentId;
           if (newParentId) {
-            const newParent = engine.scheduler.tree.getTask(newParentId);
+            const newParent = engine.getScheduler().tree.getTask(newParentId);
             if (newParent && !newParent.childIds!.includes(taskId)) {
               newParent.childIds!.push(taskId);
             }
           }
-          engine.scheduler.tree.recalcAllProgress();
+          engine.getScheduler().tree.recalcAllProgress();
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: true }));
         } catch (err) {
@@ -236,7 +236,7 @@ export function startWebServer(engine: CoreEngine, port = 3000): http.Server {
     }
 
     if (url.pathname === '/api/tree/backlog') {
-      const backlog = engine.scheduler.tree.getBacklog();
+      const backlog = engine.getScheduler().tree.getBacklog();
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(backlog));
       return;
@@ -250,7 +250,7 @@ export function startWebServer(engine: CoreEngine, port = 3000): http.Server {
       req.on('end', () => {
         try {
           const { missionId } = JSON.parse(body);
-          const ok = engine.scheduler.tree.restoreFromBacklog(missionId);
+          const ok = engine.getScheduler().tree.restoreFromBacklog(missionId);
           res.writeHead(ok ? 200 : 404);
           res.end(JSON.stringify({ success: ok }));
         } catch (err) {
@@ -269,7 +269,7 @@ export function startWebServer(engine: CoreEngine, port = 3000): http.Server {
       req.on('end', () => {
         try {
           const { missionId } = JSON.parse(body);
-          const ok = engine.scheduler.tree.setActiveMission(missionId);
+          const ok = engine.getScheduler().tree.setActiveMission(missionId);
           res.writeHead(ok ? 200 : 404);
           res.end(JSON.stringify({ success: ok }));
         } catch (err) {

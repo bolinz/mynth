@@ -9,12 +9,14 @@ export type TaskStatus =
   | 'rolled_back'
   | 'pending_review'
   | 'paused'
-  | 'blocked';
+  | 'blocked'
+  | 'archived';
 
 export interface Task {
   id: string;
   description: string;
   priority: number;
+  status: TaskStatus;
   constraints?: HandoverConstraints;
   type?: string;
   parentId?: string;

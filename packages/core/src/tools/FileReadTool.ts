@@ -14,18 +14,18 @@ export class FileReadTool implements Tool {
 
   async execute(args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
     const filePath = String(args.path ?? '');
-    if (!filePath) return { success: false, error: 'path is required' };
+    if (!filePath) return { success: false, error: 'path is required', data: null };
 
     const resolved = resolve(filePath);
     if (ctx.allowedPaths && !ctx.allowedPaths.some((p) => resolved.startsWith(resolve(p)))) {
-      return { success: false, error: `Access denied: ${filePath} is not in allowed paths` };
+      return { success: false, error: `Access denied: ${filePath} is not in allowed paths`, data: null };
     }
 
     try {
       const content = await readFile(resolved, 'utf-8');
       return { success: true, data: content, mimeType: 'text/plain' };
     } catch (err) {
-      return { success: false, error: String(err) };
+      return { success: false, error: String(err), data: null };
     }
   }
 }

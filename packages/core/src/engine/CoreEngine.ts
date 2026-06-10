@@ -127,7 +127,7 @@ export class CoreEngine {
     this.stateStore = new StateStore(this.db, this.config.tenant);
     this.bus = new MessageBus();
     this.pool = new AgentPool();
-    this.pool.setBus(this.bus);
+    this.pool.setBus(this.eventBus);
     this.memory = new GlobalMemory(this.db);
     this.scheduler = new Scheduler();
     this.orchestrator = new Orchestrator(
@@ -219,7 +219,7 @@ export class CoreEngine {
     }
     const taskId = `task_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     try {
-      await this.scheduler.submit({ id: taskId, description, priority: 1 });
+      await this.scheduler.submit({ id: taskId, description, priority: 1, status: 'queued' });
       this.bus.publish('task.submitted', { taskId, description });
       await this.stateStore.saveTask({
         taskId,
@@ -229,7 +229,7 @@ export class CoreEngine {
         createdAt: Date.now(),
       });
 
-      const analysis = await this.orchestrator.analyze({ id: taskId, description, priority: 1 });
+      const analysis = await this.orchestrator.analyze({ id: taskId, description, priority: 1, status: 'queued' });
 
       const predicted = this.orchestrator.predictNext(analysis.capabilities);
       for (const cap of predicted) {
