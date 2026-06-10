@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Git tag to release (e.g. v0.4.2)'
+        required: true
 
 jobs:
   release:
@@ -15,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          submodules: recursive
+          ref: ${{ github.event.inputs.tag || github.ref }}
 
       - uses: pnpm/action-setup@v4
 
@@ -34,7 +39,7 @@ jobs:
       - name: Generate release notes
         id: notes
         run: |
-          TAG="${GITHUB_REF_NAME}"
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
           PREV_TAG=$(git tag --sort=-v:refname | head -2 | tail -1)
           echo "notes<<EOF" >> $GITHUB_OUTPUT
           echo "## What's Changed" >> $GITHUB_OUTPUT
@@ -46,5 +51,6 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           body: ${{ steps.notes.outputs.notes }}
           generate_release_notes: false

@@ -72,13 +72,24 @@ main             稳定发布线，始终可部署
 ## Release 流程
 
 ```
-1. pnpm version minor|patch   # bump version + git tag
-2. 更新 CHANGELOG.md（按 keepachangelog 格式）
-3. git push && git push --tags
-4. CI Release workflow 自动: GitHub Release
+1. git checkout -b release/v<version> main   # 从 main 创建 release 分支
+2. pnpm version minor|patch                  # bump version + git tag（本地）
+3. 更新 CHANGELOG.md（按 keepachangelog 格式）
+4. git add && git commit -m "chore: release v<version>"
+5. git push origin release/v<version>
+6. gh pr create --base main --head release/v<version> --title "chore: release v<version>"
+7. PR 通过合并 → main
+8. git checkout main && git pull
+9. git push origin v<version>               # 推送 tag 触发 Release workflow
+10. CI Release workflow 自动: GitHub Release
+11. git push origin --delete release/v<version>  # 清理远端 release 分支
 ```
 
-已有 workflow: `.github/workflows/release.yml` — tag 推送触发，自动构建测试 + 生成 release notes
+**重要**: 禁止直接推送 commit/tag 到 main。所有改动必须通过 PR。
+
+也可在 GitHub UI 中 **Actions → Release → Run workflow** 手动触发（需输入 tag 名称）。
+
+已有 workflow: `.github/workflows/release.yml` — tag 推送或 workflow_dispatch 触发，自动构建测试 + 生成 release notes
 
 **版本**: `v0.y.z` — 功能累积后 `minor`，hotfix 用 `patch`
 
