@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0 (2026-06-10)
+
+### Features
+- **Agent Tool Use**: Tool interface + ToolRegistry, 4 built-in tools (web search, file, API, code exec), ReActLoop integration
+- **Structured Logger**: Typed log levels, structured metadata, TUI/web forwarding
+- **MetricsRegistry**: Prometheus-format metrics with counter/gauge/histogram
+- **HealthChecker**: Component health probes + aggregate system health endpoint
+- **TraceExporter**: Span export with batch processing, configurable exporters
+- **Observability wired**: All metrics/health/tracing integrated into CoreEngine + Web UI endpoints
+
+### CI
+- opencode GitHub Actions workflow (comment-triggered `/oc` commands)
+
 ## 0.3.0 (2026-05-29)
 
 ### Features
