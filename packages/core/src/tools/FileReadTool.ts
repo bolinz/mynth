@@ -18,7 +18,11 @@ export class FileReadTool implements Tool {
 
     const resolved = resolve(filePath);
     if (ctx.allowedPaths && !ctx.allowedPaths.some((p) => resolved.startsWith(resolve(p)))) {
-      return { success: false, error: `Access denied: ${filePath} is not in allowed paths`, data: null };
+      return {
+        success: false,
+        error: `Access denied: ${filePath} is not in allowed paths`,
+        data: null,
+      };
     }
 
     try {

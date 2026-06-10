@@ -290,7 +290,10 @@ export async function startTui(engine: CoreEngine): Promise<void> {
       if (node.progress !== undefined && node.progress >= 0) {
         line += ` {gray-fg}${node.progress}%{/}`;
       }
-      if (node.type === 'mission' && node.id === engine.getScheduler().tree.getActiveMission()?.id) {
+      if (
+        node.type === 'mission' &&
+        node.id === engine.getScheduler().tree.getActiveMission()?.id
+      ) {
         line += ' {bold}{magenta-fg}[MAIN]{/}';
       }
       if (node.status === 'running') {

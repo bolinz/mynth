@@ -229,7 +229,12 @@ export class CoreEngine {
         createdAt: Date.now(),
       });
 
-      const analysis = await this.orchestrator.analyze({ id: taskId, description, priority: 1, status: 'queued' });
+      const analysis = await this.orchestrator.analyze({
+        id: taskId,
+        description,
+        priority: 1,
+        status: 'queued',
+      });
 
       const predicted = this.orchestrator.predictNext(analysis.capabilities);
       for (const cap of predicted) {
