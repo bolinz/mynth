@@ -62,7 +62,7 @@ main             稳定发布线，始终可部署
   └── feat/*     新功能    → PR → main（合并后删除远端分支）
   └── fix/*      修复      → PR → main（合并后删除远端分支）
   └── refactor/* 重构      → PR → main
-  └── docs/*     文档      → 可直接提交 main
+  └── docs/*     文档      → PR → main
 ```
 
 **Commit 格式**: `type(scope): description` — 如 `feat(core): add chain transfer manager`
@@ -95,8 +95,10 @@ main             稳定发布线，始终可部署
 
 ## PR 规范
 
-- 所有 feat/fix/refactor 必须通过 PR 合入 main
+- 所有改动必须通过 PR 合入 main（禁止直接推送）
 - 使用 `.github/PULL_REQUEST_TEMPLATE.md`
+- 当 PR 中所有 CI 检查通过后，auto-merge 会自动 squash 合并到 main
+- 不需要人工 review 和手动合并操作
 
 **Submodule 更新**: `cd docs/agent-design && git pull && cd ../.. && git add docs/agent-design && git commit -m "chore: update agent-design submodule"`
 
