@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.1 (2026-06-10)
+
+### Fixed
+- **Build**: Fix 6 TypeScript compilation errors (Operation→BatchOperation rename, missing Task.status, ToolResult.data, etc.)
+- **CLI**: Fix private property access to CoreEngine.scheduler
+- **CI**: Remove private submodule checkout causing checkout failures
+- **CI**: Fix Playwright installation for browser tests
+- **CI**: Fix opencode GitHub Action trigger and authentication (use_github_token, timeout, permissions)
+
 ## 0.4.0 (2026-06-10)
 
 ### Features
