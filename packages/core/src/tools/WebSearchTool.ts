@@ -12,7 +12,7 @@ export class WebSearchTool implements Tool {
 
   async execute(args: Record<string, unknown>, _ctx: ToolContext): Promise<ToolResult> {
     const query = String(args.query ?? '');
-    if (!query) return { success: false, error: 'query is required' };
+    if (!query) return { success: false, error: 'query is required', data: null };
     try {
       const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
       const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
@@ -23,7 +23,7 @@ export class WebSearchTool implements Tool {
         .slice(0, 3000);
       return { success: true, data: text, mimeType: 'text/plain' };
     } catch (err) {
-      return { success: false, error: String(err) };
+      return { success: false, error: String(err), data: null };
     }
   }
 }

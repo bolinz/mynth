@@ -12,7 +12,7 @@ export class ApiCallTool implements Tool {
 
   async execute(args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
     const url = String(args.url ?? '');
-    if (!url) return { success: false, error: 'url is required' };
+    if (!url) return { success: false, error: 'url is required', data: null };
 
     try {
       const parsed = new URL(url);
@@ -20,6 +20,7 @@ export class ApiCallTool implements Tool {
         return {
           success: false,
           error: `Access denied: ${parsed.hostname} is not in allowed hosts`,
+          data: null,
         };
       }
 
@@ -31,7 +32,7 @@ export class ApiCallTool implements Tool {
         mimeType: res.headers.get('content-type') ?? 'text/plain',
       };
     } catch (err) {
-      return { success: false, error: String(err) };
+      return { success: false, error: String(err), data: null };
     }
   }
 }

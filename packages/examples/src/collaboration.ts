@@ -24,6 +24,7 @@ async function main() {
     id: 'task-1',
     description: 'Implement a login form with validation',
     priority: 1,
+    status: 'queued',
   });
 
   const chain: Array<{ id: string; cap: 'reasoning' | 'codegen' | 'review' }> = [

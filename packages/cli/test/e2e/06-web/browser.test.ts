@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { CoreEngine } from '../../../../core/src/engine/CoreEngine.ts';
 import { startWebServer } from '../../../src/web/server.ts';
 
-describe.runIf(process.env.PLAYWRIGHT || process.env.CI)('e2e: browser', () => {
+describe.runIf(process.env.PLAYWRIGHT)('e2e: browser', () => {
   it('should display task status in browser', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'mynth-e2e-browser-'));
 

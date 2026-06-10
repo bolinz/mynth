@@ -255,7 +255,7 @@ export async function startTui(engine: CoreEngine): Promise<void> {
   }
 
   function renderTree(): void {
-    const tree = engine.scheduler.getTree();
+    const tree = engine.getScheduler().getTree();
     if (tree.length === 0) {
       treePanel.setContent('  {gray-fg}No tasks.{/}');
       screen.render();
@@ -290,7 +290,10 @@ export async function startTui(engine: CoreEngine): Promise<void> {
       if (node.progress !== undefined && node.progress >= 0) {
         line += ` {gray-fg}${node.progress}%{/}`;
       }
-      if (node.type === 'mission' && node.id === engine.scheduler.tree.getActiveMission()?.id) {
+      if (
+        node.type === 'mission' &&
+        node.id === engine.getScheduler().tree.getActiveMission()?.id
+      ) {
         line += ' {bold}{magenta-fg}[MAIN]{/}';
       }
       if (node.status === 'running') {
@@ -528,7 +531,7 @@ export async function startTui(engine: CoreEngine): Promise<void> {
         break;
       }
       case 'backlog': {
-        const backlog = engine.scheduler.tree.getBacklog();
+        const backlog = engine.getScheduler().tree.getBacklog();
         const lines = backlog.map((m) => `  {cyan-fg}${m.id}{/}  {gray-fg}${m.description}{/}`);
         chainPanel.setContent(
           `  {cyan-fg}/backlog{/}  {gray-fg}(${backlog.length} paused){/}\n\n${lines.length > 0 ? lines.join('\n') : '  {gray-fg}No paused missions.{/}'}`,
@@ -543,7 +546,7 @@ export async function startTui(engine: CoreEngine): Promise<void> {
           chainPanel.setContent('  {red-fg}Usage: /restore <missionId>{/}');
           break;
         }
-        const ok = engine.scheduler.tree.restoreFromBacklog(missionId);
+        const ok = engine.getScheduler().tree.restoreFromBacklog(missionId);
         if (ok) {
           chainPanel.setContent(`  {green-fg}Restored mission: ${missionId}{/}`);
           log('\u25b6', `Restored: ${missionId}`, '{green-fg}');
@@ -559,7 +562,7 @@ export async function startTui(engine: CoreEngine): Promise<void> {
           chainPanel.setContent('  {red-fg}Usage: /switch <missionId>{/}');
           break;
         }
-        const ok = engine.scheduler.tree.setActiveMission(missionId);
+        const ok = engine.getScheduler().tree.setActiveMission(missionId);
         if (ok) {
           chainPanel.setContent(`  {green-fg}Switched active mission to: ${missionId}{/}`);
           log('\u25b6', `Switched to mission: ${missionId}`, '{green-fg}');

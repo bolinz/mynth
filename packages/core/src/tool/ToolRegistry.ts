@@ -30,7 +30,7 @@ export class ToolRegistry {
   ): Promise<ToolResult> {
     const tool = this.tools.get(name);
     if (!tool) {
-      return { success: false, error: `Tool not found: ${name}` };
+      return { success: false, error: `Tool not found: ${name}`, data: null };
     }
 
     if (tool.definition.riskLevel === 'high' && this.hitlManager) {
@@ -49,6 +49,7 @@ export class ToolRegistry {
         return {
           success: false,
           error: `HITL approval required for ${name}. Request ID: ${req.id}. Use 'mynth approve ${req.id}' to proceed.`,
+          data: null,
         };
       }
     }
@@ -56,7 +57,7 @@ export class ToolRegistry {
     try {
       return await tool.execute(args, ctx);
     } catch (err) {
-      return { success: false, error: String(err) };
+      return { success: false, error: String(err), data: null };
     }
   }
 }

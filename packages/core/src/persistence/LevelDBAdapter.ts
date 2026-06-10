@@ -1,5 +1,5 @@
 import { Level } from 'level';
-import type { Operation, Persistence } from './Persistence.ts';
+import type { BatchOperation, Persistence } from './Persistence.ts';
 
 export class LevelDBAdapter implements Persistence {
   private db!: Level<string, string>;
@@ -29,7 +29,7 @@ export class LevelDBAdapter implements Persistence {
     await this.db.del(key);
   }
 
-  async batch(operations: Operation[]): Promise<void> {
+  async batch(operations: BatchOperation[]): Promise<void> {
     const ops = operations.map((op) => {
       if (op.type === 'put') {
         return { type: 'put' as const, key: op.key, value: JSON.stringify(op.value) };

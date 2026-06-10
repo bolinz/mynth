@@ -102,7 +102,7 @@ export class BaseAgent {
           timestamp: Date.now(),
           state: 'idle',
           partialResult: null,
-          context: this.context ?? {},
+          context: (this.context ?? {}) as TaskContext,
         },
       };
     }
@@ -124,7 +124,7 @@ export class BaseAgent {
           timestamp: Date.now(),
           state: 'idle',
           partialResult: null,
-          context: this.context ?? {},
+          context: (this.context ?? {}) as TaskContext,
         },
       };
     }
