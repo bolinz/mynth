@@ -58,16 +58,34 @@ mynth ui                  # Web UI (http://localhost:3000)
 ## Git workflow
 
 ```
-main (稳定)
-  └── feat/*     新功能    → PR merge 回 main
-  └── fix/*      修复      → PR merge 回 main
-  └── refactor/* 重构      → PR merge 回 main
+main             稳定发布线，始终可部署
+  └── feat/*     新功能    → PR → main（合并后删除远端分支）
+  └── fix/*      修复      → PR → main（合并后删除远端分支）
+  └── refactor/* 重构      → PR → main
   └── docs/*     文档      → 可直接提交 main
 ```
 
 **Commit 格式**: `type(scope): description` — 如 `feat(core): add chain transfer manager`
 
-**版本**: milestone 后 `git tag v0.y.z`
+**清理**: 合并后删除远端分支 (`git push origin --delete <branch>`)
+
+## Release 流程
+
+```
+1. pnpm version minor|patch   # bump version + git tag
+2. 更新 CHANGELOG.md（按 keepachangelog 格式）
+3. git push && git push --tags
+4. CI Release workflow 自动: GitHub Release
+```
+
+已有 workflow: `.github/workflows/release.yml` — tag 推送触发，自动构建测试 + 生成 release notes
+
+**版本**: `v0.y.z` — 功能累积后 `minor`，hotfix 用 `patch`
+
+## PR 规范
+
+- 所有 feat/fix/refactor 必须通过 PR 合入 main
+- 使用 `.github/PULL_REQUEST_TEMPLATE.md`
 
 **Submodule 更新**: `cd docs/agent-design && git pull && cd ../.. && git add docs/agent-design && git commit -m "chore: update agent-design submodule"`
 
