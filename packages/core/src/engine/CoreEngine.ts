@@ -264,7 +264,7 @@ export class CoreEngine {
         this.observer,
         this.intervener,
         this.parsedConfig.maxHops,
-        this.bus as any,
+        this.bus,
         this.llmPool,
         this.promptRegistry,
         this.budgetTracker,
