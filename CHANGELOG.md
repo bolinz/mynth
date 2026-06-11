@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.2 (2026-06-10)
+
+### Fixed
+- **CI**: Remove private submodule checkout from release.yml
+- **CI**: Add workflow_dispatch trigger to release.yml
+- **Docs**: Fix release flow in AGENTS.md — 禁止直接推送 main，改用 release 分支 + PR
+
 ## 0.4.1 (2026-06-10)
 
 ### Fixed
