@@ -52,7 +52,7 @@ describe('ConfigManager', () => {
   it('should list snapshots in reverse chronological order', async () => {
     const mgr = new ConfigManager();
     await mgr.saveSnapshot({ a: 1 }, 'old');
-    await new Promise((r) => setTimeout(r, 1));
+    await new Promise((r) => setTimeout(r, 10));
     await mgr.saveSnapshot({ b: 2 }, 'new');
 
     const list = mgr.listSnapshots();
